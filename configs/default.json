@@ -1,0 +1,9 @@
+{
+  "synthea_csv_dir": "data/synthea/csv",
+  "database": "data/statin.duckdb",
+  "index_date": null,
+  "lookback_days": 365,
+  "cohort": {"min_age": 40, "max_age": 80, "alive_only": true},
+  "agent": {"k_samples": 3, "defer_threshold": 0.8, "self_check": true, "max_steps": 16},
+  "seed": 0
+}

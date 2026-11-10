@@ -1,0 +1,12 @@
+DATE,PATIENT,ENCOUNTER,CATEGORY,CODE,DESCRIPTION,VALUE,UNITS,TYPE
+2025-10-01,P1,E1,laboratory,18262-6,Low Density Lipoprotein Cholesterol,-5.0,mg/dL,numeric
+2025-06-01,P1,E1,laboratory,18262-6,Low Density Lipoprotein Cholesterol,150.0,mg/dL,numeric
+2024-01-01,P1,E1,laboratory,18262-6,Low Density Lipoprotein Cholesterol,210.0,mg/dL,numeric
+2025-06-01,P1,E1,laboratory,2093-3,Total Cholesterol,230.0,mg/dL,numeric
+2025-06-01,P1,E1,laboratory,2085-9,High Density Lipoprotein Cholesterol,45.0,mg/dL,numeric
+2025-06-01,P1,E1,vital-signs,8480-6,Systolic Blood Pressure,132.0,mm[Hg],numeric
+2025-06-01,P1,E1,survey,72166-2,Tobacco smoking status,Never smoked tobacco,,text
+2022-01-01,P2,E2,laboratory,18262-6,Low Density Lipoprotein Cholesterol,140.0,mg/dL,numeric
+2015-01-01,P2,E2,survey,72166-2,Tobacco smoking status,Never smoked tobacco,,text
+2025-09-01,P2,E2,survey,72166-2,Tobacco smoking status,Smokes tobacco daily,,text
+2025-09-01,P3,E3,laboratory,18262-6,Low Density Lipoprotein Cholesterol,95.0,mg/dL,numeric

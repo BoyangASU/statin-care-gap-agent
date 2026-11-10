@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Statin Care-Gap Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f5f2; --panel:#ffffff; --ink:#1c1d1f; --muted:#62656b; --faint:#8b8e94; --line:#e4e2dc;
+  --gap:#b42318; --gap-bg:#fdecea; --consider:#a15c07; --consider-bg:#fdf3e1;
+  --ok:#2f6b4f; --ok-bg:#e8f3ec; --info:#245c8f; --info-bg:#e8f0f8; --neutral-bg:#efeeea;
+  --review:#7a4f9e; --review-bg:#f3edf8; --accent:#1c1d1f; --window:rgba(36,92,143,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#141517; --panel:#1c1d20; --ink:#ecebe7; --muted:#a3a5aa; --faint:#7d8085; --line:#2d2e32;
+    --gap:#f2867b; --gap-bg:#3a1f1d; --consider:#e6b05c; --consider-bg:#352a17;
+    --ok:#7cc4a0; --ok-bg:#1a2e24; --info:#86b6e3; --info-bg:#1a2733; --neutral-bg:#26272a;
+    --review:#c3a2e0; --review-bg:#2c2335; --accent:#ecebe7; --window:rgba(134,182,227,.10);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141517; --panel:#1c1d20; --ink:#ecebe7; --muted:#a3a5aa; --faint:#7d8085; --line:#2d2e32;
+  --gap:#f2867b; --gap-bg:#3a1f1d; --consider:#e6b05c; --consider-bg:#352a17;
+  --ok:#7cc4a0; --ok-bg:#1a2e24; --info:#86b6e3; --info-bg:#1a2733; --neutral-bg:#26272a;
+  --review:#c3a2e0; --review-bg:#2c2335; --accent:#ecebe7; --window:rgba(134,182,227,.10);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+header{padding:28px 32px 8px;max-width:1360px;margin:0 auto}
+h1{font-size:26px;font-weight:600;margin:0;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:14px;margin-top:4px}
+.banner{display:inline-block;margin-top:12px;font-size:12px;padding:3px 10px;border-radius:999px;background:var(--neutral-bg);color:var(--muted)}
+main{max-width:1360px;margin:0 auto;padding:12px 32px 48px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0 20px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;cursor:pointer;text-align:left;color:inherit;font:inherit}
+.kpi:hover{border-color:var(--faint)}
+.kpi .n{font-size:30px;font-weight:600;line-height:1.1}
+.kpi .l{font-size:13px;color:var(--muted)}
+.kpi .h{font-size:12px;color:var(--faint);margin-top:2px}
+.kpi.gap .n{color:var(--gap)} .kpi.review .n{color:var(--review)} .kpi.labs .n{color:var(--info)} .kpi.on .n{color:var(--ok)}
+.layout{display:grid;grid-template-columns:380px 1fr;gap:16px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.tabs{display:flex;gap:4px;padding:10px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tab{border:0;background:none;color:var(--muted);font:inherit;font-size:13px;padding:6px 10px;border-radius:8px;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--neutral-bg);color:var(--ink);font-weight:500}
+.tab .c{color:var(--faint);margin-left:4px}
+.search{padding:10px;border-bottom:1px solid var(--line)}
+.search input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-size:14px}
+.list{max-height:68vh;overflow:auto}
+.row{display:grid;grid-template-columns:1fr auto;gap:4px 8px;padding:10px 14px;border:0;border-bottom:1px solid var(--line);cursor:pointer;background:none;border-left:3px solid transparent;width:100%;text-align:left;color:inherit;font:inherit}
+.row:hover{background:var(--bg)}
+.row[aria-current="true"]{background:var(--bg);border-left-color:var(--accent)}
+.row .who{font-size:14px;font-weight:500}
+.row .meta{font-size:12px;color:var(--muted)}
+.empty{padding:24px;color:var(--muted);font-size:14px}
+.chip{display:inline-block;font-size:12px;font-weight:500;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.c-indicated{background:var(--gap-bg);color:var(--gap)}
+.c-consider{background:var(--consider-bg);color:var(--consider)}
+.c-on_statin{background:var(--ok-bg);color:var(--ok)}
+.c-contraindicated{background:var(--neutral-bg);color:var(--muted)}
+.c-not_indicated{background:var(--neutral-bg);color:var(--muted)}
+.c-insufficient_data{background:var(--info-bg);color:var(--info)}
+.status{font-size:11px;font-weight:500;letter-spacing:.03em;text-transform:uppercase;color:var(--faint)}
+.status.review{color:var(--review)}
+.detail{padding:22px 24px}
+.dhead{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start}
+.dhead h2{margin:0;font-size:20px;font-weight:600}
+.dhead .chip{font-size:13px;padding:4px 12px}
+.callout{margin:16px 0 0;padding:12px 14px;border-radius:10px;font-size:14px}
+.callout.review{background:var(--review-bg);color:var(--ink);border-left:3px solid var(--review)}
+.callout.auto{background:var(--neutral-bg)}
+section{margin-top:24px}
+section h3{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 10px}
+.facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.fact{border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.fact .k{font-size:12px;color:var(--muted)}
+.fact .v{font-size:15px;font-weight:500}
+.fact.flag{border-color:var(--gap);background:var(--gap-bg)}
+.fact.flag .v{color:var(--gap)}
+.fact.none .v{color:var(--faint);font-weight:400}
+.missing{list-style:none;padding:0;margin:0;display:grid;gap:6px}
+.missing li{padding:8px 12px;border-radius:8px;background:var(--consider-bg);color:var(--consider);font-size:14px}
+.tl svg{width:100%;height:auto;display:block}
+.tl text{font-family:"IBM Plex Sans",system-ui,sans-serif;fill:var(--muted)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.events{list-style:none;padding:0;margin:10px 0 0;font-size:13px}
+.events li{display:grid;grid-template-columns:92px 1fr;gap:8px;padding:3px 0;color:var(--muted)}
+.events li b{color:var(--ink);font-weight:500}
+.agent{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.problems{margin:10px 0 0;padding-left:18px;font-size:13px;color:var(--muted)}
+details{margin-top:10px}
+summary{cursor:pointer;font-size:13px;color:var(--muted)}
+ol.trace{margin:8px 0 0;padding-left:22px;font-size:13px}
+ol.trace li{padding:2px 0}
+.foot{color:var(--faint);font-size:12px;margin-top:20px}
+@media (max-width:960px){
+  header,main{padding-left:16px;padding-right:16px}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .layout{grid-template-columns:1fr}
+  .list{max-height:42vh}
+  .detail{padding:18px 16px}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Statin Care-Gap Review</h1>
+  <div class="sub" id="sub"></div>
+  <div class="banner">Synthetic patients (Synthea) · research prototype · not for clinical use</div>
+</header>
+<main>
+  <div class="kpis" id="kpis"></div>
+  <div class="layout">
+    <div class="panel">
+      <div class="tabs" id="tabs" role="tablist"></div>
+      <div class="search"><input id="q" type="search" placeholder="Search patient ID" aria-label="Search patient ID"></div>
+      <div class="list" id="list"></div>
+    </div>
+    <div class="panel detail" id="detail"></div>
+  </div>
+  <div class="foot" id="foot"></div>
+</main>
+<script>
+const DATA = /*__DATA__*/null;
+const NAMES = {indicated:"Care gap: statin indicated", consider:"Consider statin", on_statin:"On statin",
+  contraindicated:"Statin intolerance", not_indicated:"Not indicated", insufficient_data:"Insufficient data"};
+const TABS = [
+  {id:"gap", label:"Care gaps", test:p=>p.category==="indicated" && !p.deferred},
+  {id:"review", label:"Needs review", test:p=>p.deferred},
+  {id:"labs", label:"Order labs", test:p=>p.category==="insufficient_data" && !p.deferred},
+  {id:"all", label:"All", test:()=>true},
+];
+const P = DATA.patients;
+let tab = "gap", sel = null, q = "";
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const chip = c => `<span class="chip c-${c}">${NAMES[c] || "No decision"}</span>`;
+
+function init(){
+  $("sub").textContent = `Run ${DATA.run} · model ${DATA.model || "—"} · k = ${DATA.k ?? "—"}, τ = ${DATA.tau ?? "—"} · index date ${DATA.index_date} · ${P.length} patients`;
+  const n = t => P.filter(TABS.find(x=>x.id===t).test).length;
+  const onStatin = P.filter(p=>p.category==="on_statin" && !p.deferred).length;
+  $("kpis").innerHTML = [
+    ["gap", n("gap"), "Care gaps flagged", "statin indicated, none active"],
+    ["review", n("review"), "Needs clinician review", "low confidence or failed self-check"],
+    ["labs", n("labs"), "Labs to order", `no recent lipids or BP`],
+    ["on", onStatin, "Already on a statin", "no action needed"],
+  ].map(([cls,v,l,h]) => `<button class="kpi ${cls}" data-tab="${cls==="on"?"all":cls}"><div class="n">${v}</div><div class="l">${l}</div><div class="h">${h}</div></button>`).join("");
+  document.querySelectorAll(".kpi").forEach(b => b.onclick = () => setTab(b.dataset.tab));
+  $("tabs").innerHTML = TABS.map(t => `<button class="tab" role="tab" data-t="${t.id}">${t.label}<span class="c">${n(t.id)}</span></button>`).join("");
+  document.querySelectorAll(".tab").forEach(b => b.onclick = () => setTab(b.dataset.t));
+  $("q").oninput = e => { q = e.target.value.trim().toLowerCase(); renderList(); };
+  const withRef = P.filter(p=>p.reference);
+  if (withRef.length){
+    const auto = withRef.filter(p=>!p.deferred);
+    const agree = auto.filter(p=>p.category===p.reference).length;
+    $("foot").textContent = `Evaluation: on the ${auto.length} automated decisions, ${agree} (${(100*agree/Math.max(auto.length,1)).toFixed(1)}%) match the reference guideline label. Reference labels are computed from the record with the same simplified guideline rules.`;
+  }
+  setTab(n("gap") ? "gap" : "all");
+}
+function setTab(t){
+  tab = t;
+  document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-selected", b.dataset.t===t));
+  const rows = visible();
+  sel = rows[0]?.id ?? null;
+  renderList(); renderDetail();
+}
+function visible(){
+  const t = TABS.find(x=>x.id===tab);
+  return P.filter(t.test).filter(p => !q || p.id.toLowerCase().includes(q))
+    .sort((a,b) => (b.deferred - a.deferred) || ((b.risk ?? -1) - (a.risk ?? -1)));
+}
+function renderList(){
+  const rows = visible();
+  $("list").innerHTML = rows.length ? rows.map(p => `
+    <button class="row" data-id="${p.id}" aria-current="${p.id===sel}">
+      <span class="who mono">${p.short}</span>
+      <span class="status ${p.deferred?"review":""}">${p.deferred?"Review":"Auto"}</span>
+      <span class="meta">${p.age ?? "?"} y · ${esc(p.sex ?? "")}${p.risk!=null?` · 10-y risk ${(100*p.risk).toFixed(1)}%`:""}</span>
+      <span>${chip(p.category)}</span>
+    </button>`).join("") : `<div class="empty">No patients in this list.</div>`;
+  document.querySelectorAll(".row").forEach(r => r.onclick = () => {
+    sel = r.dataset.id; renderList(); renderDetail();
+    if (matchMedia("(max-width:960px)").matches) $("detail").scrollIntoView({behavior:"smooth"});
+  });
+}
+function fact(k, v, flag){
+  const none = v === null || v === undefined;
+  return `<div class="fact ${flag?"flag":""} ${none?"none":""}"><div class="k">${k}</div><div class="v">${none?"missing":v}</div></div>`;
+}
+const yn = b => b ? "Yes" : "No";
+function renderDetail(){
+  const p = P.find(x=>x.id===sel);
+  if (!p){ $("detail").innerHTML = `<div class="empty">Select a patient.</div>`; return; }
+  const f = p.facts || {};
+  const agree = p.samples.filter(c=>c===p.category).length;
+  const why = p.deferred
+    ? `<div class="callout review"><b>Sent to clinician review.</b> ${!p.verified ? "The agent's facts did not pass the self-check after one retry." : `Only ${agree} of ${p.samples.length} agent runs agreed on this decision.`}</div>`
+    : `<div class="callout auto">Decided automatically: ${agree} of ${p.samples.length} runs agree and the self-check passed${p.retried?" after one retry":""}.</div>`;
+  $("detail").innerHTML = `
+    <div class="dhead">
+      <div><h2 class="mono">${p.short}</h2><div class="sub">${p.age ?? "?"}-year-old ${esc(p.sex ?? "")} · as of ${DATA.index_date}</div></div>
+      ${chip(p.category)}
+    </div>
+    ${why}
+    <section><h3>What matters</h3><div class="facts">
+      ${fact("Clinical ASCVD", yn(f.ascvd), f.ascvd)}
+      ${fact("On a statin", yn(f.on_statin))}
+      ${fact("LDL (mg/dL)", f.ldl, f.ldl!=null && f.ldl>=190)}
+      ${fact("10-year ASCVD risk", p.risk!=null?(100*p.risk).toFixed(1)+"%":null, p.risk!=null && p.risk>=0.1)}
+      ${fact("Diabetes", yn(f.diabetes), f.diabetes)}
+      ${fact("Hypertension", yn(f.hypertension))}
+      ${fact("BP treated", yn(f.bp_treated))}
+      ${fact("Current smoker", yn(f.smoker), f.smoker)}
+      ${fact("Total cholesterol", f.total_chol)}
+      ${fact("HDL", f.hdl)}
+      ${fact("Systolic BP", f.sbp)}
+      ${fact("Statin intolerance", yn(f.statin_intolerance))}
+    </div></section>
+    ${p.missing.length ? `<section><h3>What's missing</h3><ul class="missing">${p.missing.map(m=>`<li>${esc(m)}</li>`).join("")}</ul></section>` : ""}
+    <section class="tl"><h3>Record timeline</h3>${timeline(p)}</section>
+    <section><h3>Agent review</h3>
+      <div class="agent">
+        ${fact("Runs agreeing", `${agree} / ${p.samples.length}`)}
+        ${fact("Self-check", p.verified?"Passed":"Failed", !p.verified)}
+        ${fact("Retried after feedback", yn(p.retried))}
+        ${p.reference ? fact("Reference label", NAMES[p.reference], p.reference!==p.category) : ""}
+      </div>
+      ${p.problems.length ? `<ul class="problems">${p.problems.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+      ${p.rationale ? `<p class="sub">${esc(p.rationale)}</p>` : ""}
+      <details><summary>Tool calls in the final run (${p.trace.length})</summary>
+        <ol class="trace mono">${p.trace.map(t=>`<li>${esc(t.tool)}(${esc(Object.entries(t.args||{}).map(([k,v])=>k+"="+JSON.stringify(v)).join(", "))})</li>`).join("")}</ol>
+      </details>
+    </section>`;
+}
+function timeline(p){
+  const idx = new Date(DATA.index_date);
+  const dates = [...p.events.map(e=>e.date), ...p.ldl.map(l=>l.date)].map(d=>new Date(d));
+  let t0 = new Date(Math.min(...dates, idx - 3*365*864e5));
+  const floor = new Date(idx); floor.setFullYear(idx.getFullYear()-15);
+  if (t0 < floor) t0 = floor;
+  const W=720, H=210, L=44, R=16, top=14, lane=172, plotB=140;
+  const x = d => L + (W-L-R) * ((new Date(d) - t0) / (idx - t0));
+  const ldl = p.ldl.filter(l => new Date(l.date) >= t0);
+  const vmax = Math.max(220, ...ldl.map(l=>l.value));
+  const y = v => plotB - (plotB-top) * (v / vmax);
+  const win = new Date(idx - DATA.lookback*864e5);
+  const years = []; for (let yv=t0.getFullYear()+1; yv<=idx.getFullYear(); yv++) years.push(yv);
+  const step = Math.ceil(years.length/8);
+  const color = {ascvd:"var(--gap)", diabetes:"var(--consider)", hypertension:"var(--info)", statin:"var(--ok)", statin_stop:"var(--faint)"};
+  const evs = p.events.filter(e => new Date(e.date) >= t0);
+  const svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="LDL values and clinical events over time">
+    <rect x="${x(win)}" y="${top-6}" width="${W-R-x(win)}" height="${lane+12-top}" fill="var(--window)"/>
+    <text x="${W-R-4}" y="${top+6}" text-anchor="end" font-size="11">last ${DATA.lookback} days</text>
+    ${[70,190].filter(v=>v<vmax).map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-dasharray="4 4"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end" font-size="11">${v}</text>`).join("")}
+    <text x="${L-6}" y="${top+4}" text-anchor="end" font-size="11">LDL</text>
+    ${ldl.length>1?`<polyline fill="none" stroke="var(--muted)" stroke-width="1.5" points="${ldl.map(l=>`${x(l.date)},${y(l.value)}`).join(" ")}"/>`:""}
+    ${ldl.map(l=>`<circle cx="${x(l.date)}" cy="${y(l.value)}" r="3.5" fill="${l.value<10||l.value>600?"var(--gap)":"var(--ink)"}"><title>LDL ${l.value} mg/dL · ${l.date}</title></circle>`).join("")}
+    <line x1="${L}" x2="${W-R}" y1="${lane}" y2="${lane}" stroke="var(--line)"/>
+    ${evs.map(e=>`<rect x="${x(e.date)-5}" y="${lane-5}" width="10" height="10" transform="rotate(45 ${x(e.date)} ${lane})" fill="${color[e.kind]}"><title>${esc(e.label)} · ${e.date}</title></rect>`).join("")}
+    <line x1="${x(idx)}" x2="${x(idx)}" y1="${top-6}" y2="${lane+8}" stroke="var(--ink)" stroke-width="1.5"/>
+    ${years.filter((_,i)=>i%step===0).map(yv=>`<text x="${x(new Date(yv,0,1))}" y="${H-6}" text-anchor="middle" font-size="11">${yv}</text>`).join("")}
+  </svg>`;
+  const legend = `<div class="legend"><span><i style="background:var(--ink);border-radius:50%"></i>LDL result</span><span><i style="background:var(--gap)"></i>ASCVD</span><span><i style="background:var(--consider)"></i>Diabetes</span><span><i style="background:var(--info)"></i>Hypertension</span><span><i style="background:var(--ok)"></i>Statin started</span><span><i style="background:var(--window);border:1px solid var(--line)"></i>Look-back window</span></div>`;
+  const list = p.events.length ? `<ul class="events">${p.events.slice().reverse().map(e=>`<li><span class="mono">${e.date}</span><span><b>${esc(e.label)}</b></span></li>`).join("")}</ul>` : `<div class="sub">No cardiovascular, diabetes, hypertension or statin events on record.</div>`;
+  return svg + legend + list;
+}
+init();
+</script>
+</body>
+</html>

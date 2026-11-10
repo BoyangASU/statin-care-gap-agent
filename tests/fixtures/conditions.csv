@@ -1,0 +1,4 @@
+START,STOP,PATIENT,ENCOUNTER,CODE,DESCRIPTION
+2019-05-02,,P1,E1,399211009,History of myocardial infarction (situation)
+2018-01-01,,P2,E2,59621000,Essential hypertension (disorder)
+2017-01-01,,P3,E3,44054006,Diabetes mellitus type 2 (disorder)

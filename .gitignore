@@ -1,0 +1,13 @@
+data/
+results/*
+!results/.gitkeep
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+*.duckdb
+*.jar
+.env
+docs/analysis_plan.md
+results_*/
+*.log
