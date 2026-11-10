@@ -14,6 +14,12 @@ The model is open-weight (Qwen3-8B) and served locally, so records never leave t
 > Equations, the 2018 AHA/ACC cholesterol guideline and the 2022 USPSTF statin
 > recommendation.
 
+### ▶ [Interactive demo](https://boyangasu.github.io/statin-care-gap-agent/)
+
+Results from the real runs, step-by-step replays of the agent reading three patient records
+(including a wrong answer stopped by deferral), and replays of four patient interviews
+(including a failure). The page is a single static file: [`docs/index.html`](docs/index.html).
+
 **Contents:** [Results at a glance](#results-at-a-glance) ·
 [The task](#the-task) · [How the system works](#how-the-system-works) ·
 [Patient interviews](#extension-patient-interviews) · [Detailed results](#detailed-results) ·
@@ -345,7 +351,7 @@ scripts/
   demo_patient.py
 configs/default.json       paths, cohort, index date, k, τ, step limit
 tests/                     unit and end-to-end tests on small fixture CSVs
-docs/                      figures and notes
+docs/                      figures, notes, and the interactive results page (index.html, served by GitHub Pages)
 ```
 
 ---

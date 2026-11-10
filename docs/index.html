@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Statin Care-Gap Agent</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}
+/* Layout: a single reading column like a case report; two-pane "replay" panels (trace | facts) that stack on phones. */
+:root{
+  --bg:#f5f7f8; --surface:#ffffff; --sunk:#eceff2; --ink:#14202b; --muted:#5a6773; --line:#d6dce1;
+  --accent:#2747c9; --accent-soft:#e3e8fb;
+  --ok:#2f7d4f; --ok-soft:#dcefe3; --bad:#c2372f; --bad-soft:#f8e0de; --wait:#b7790c; --wait-soft:#f8ecd3;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",Roboto,Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f151b; --surface:#161e26; --sunk:#1d2730; --ink:#e4e9ee; --muted:#93a0ac; --line:#2b3742;
+  --accent:#8ea2ff; --accent-soft:#222c52;
+  --ok:#5fc08a; --ok-soft:#173326; --bad:#f07a70; --bad-soft:#3a1d1b; --wait:#e8b04a; --wait-soft:#3a2c12; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f151b; --surface:#161e26; --sunk:#1d2730; --ink:#e4e9ee; --muted:#93a0ac; --line:#2b3742;
+  --accent:#8ea2ff; --accent-soft:#222c52;
+  --ok:#5fc08a; --ok-soft:#173326; --bad:#f07a70; --bad-soft:#3a1d1b; --wait:#e8b04a; --wait-soft:#3a2c12; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.6 var(--f-body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1060px;margin:0 auto;padding-block:40px 64px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(30px,5vw,46px);font-weight:800;line-height:1.08}
+h2{font-size:26px;font-weight:700;line-height:1.2}
+h3{font-size:17px;font-weight:700}
+p{margin:0;max-width:68ch}
+.eyebrow{font:500 12px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.muted{color:var(--muted)}
+.mono{font-family:var(--f-mono)}
+section>*,header>*{min-width:0}
+section{display:grid;gap:18px;padding-block:44px;border-top:1px solid var(--line)}
+header{display:grid;gap:18px;padding-bottom:36px}
+.lede{font-size:18px;line-height:1.55;max-width:62ch}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;display:grid;gap:4px}
+.stat b{font:800 30px/1.05 var(--f-display);font-variant-numeric:tabular-nums}
+.stat span{font-size:13px;color:var(--muted)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.cols>*{min-width:0}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:18px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface);flex-wrap:wrap}
+.seg button,.btn{font:500 13px var(--f-body);border:0;background:transparent;color:var(--ink);padding:8px 14px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--surface)}
+.btn{border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:7px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font:500 12px var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+svg text{fill:var(--ink);font-family:var(--f-body)}
+svg .ax{fill:var(--muted);font-size:11px;font-family:var(--f-mono)}
+.chip{display:inline-block;font:500 12px/1 var(--f-mono);padding:5px 8px;border-radius:4px;background:var(--sunk);color:var(--ink);white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.bad{background:var(--bad-soft);color:var(--bad)} .chip.wait{background:var(--wait-soft);color:var(--wait)} .chip.acc{background:var(--accent-soft);color:var(--accent)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+.tabs button{font:500 13px var(--f-body);text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:10px 12px;cursor:pointer;display:grid;gap:2px;flex:1 1 220px}
+.tabs button small{color:var(--muted);font-size:12px}
+.tabs button[aria-selected="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.replay{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:820px){.replay{grid-template-columns:minmax(0,1fr)}}
+.story{font-size:14.5px;background:var(--accent-soft);border-radius:6px;padding:12px 14px}
+.steps{display:grid;gap:8px}
+.step{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:10px 12px;display:grid;gap:6px;transition:opacity .3s,transform .3s}
+.step.pending{opacity:0;transform:translateY(6px)}
+.step .hd{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.step .tool{font:500 13px var(--f-mono);color:var(--accent)}
+.step .args{font:12px var(--f-mono);color:var(--muted);word-break:break-word}
+.step pre{margin:0;font:12px/1.5 var(--f-mono);white-space:pre-wrap;word-break:break-word;background:var(--sunk);border-radius:4px;padding:8px 10px;max-height:150px;overflow:auto}
+.step.err{border-color:var(--bad);background:var(--bad-soft)}
+.step.err li{font-size:13.5px}
+.step.okv{border-color:var(--ok);background:var(--ok-soft)}
+.step.final{border-width:2px}
+.divider{font:500 12px var(--f-mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding-top:6px}
+.facts td,.facts th{padding:5px 8px;font-size:13px}
+.facts td.chg{background:var(--wait-soft);color:var(--wait);font-weight:600}
+.facts td.na{color:var(--muted)}
+.chat{display:grid;gap:10px;grid-template-columns:minmax(0,1fr)}
+.msg{max-width:88%;min-width:0;overflow-wrap:anywhere;padding:10px 13px;border-radius:10px;font-size:14.5px;display:grid;gap:6px;transition:opacity .3s,transform .3s}
+.msg.pending{opacity:0;transform:translateY(6px)}
+.msg.agent{background:var(--accent-soft);justify-self:start;border-bottom-left-radius:2px}
+.msg.patient{background:var(--surface);border:1px solid var(--line);justify-self:end;border-bottom-right-radius:2px}
+.msg .who{font:500 11px var(--f-mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.find{font:12px var(--f-mono);border-left:3px solid var(--ok);padding:3px 8px;background:var(--ok-soft);border-radius:0 4px 4px 0}
+.find.uns{border-color:var(--wait);background:var(--wait-soft)}
+.esc{font:12px var(--f-mono);border-left:3px solid var(--bad);padding:3px 8px;background:var(--bad-soft);border-radius:0 4px 4px 0}
+.cat{display:grid;gap:8px}
+.cat .line{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;font-size:14px}
+ul.plain{margin:0;padding-left:18px;display:grid;gap:6px;max-width:72ch}
+footer{border-top:1px solid var(--line);padding-top:24px;font-size:13px;color:var(--muted);display:grid;gap:6px}
+@media (prefers-reduced-motion:reduce){.step,.msg{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">Prototype · LLM agent on longitudinal health records</div>
+  <h1>Statin Care-Gap Agent</h1>
+  <p class="lede">An agent reads a patient's record, works out whether guidelines recommend a statin they are not taking, checks its own work, and hands uncertain cases to a clinician. A second agent talks with the patient to fill in what the record is missing.</p>
+  <div class="stats" id="stats"></div>
+</header>
+
+<section>
+  <div class="eyebrow">The problem</div>
+  <h2>Who should be on a statin and isn't</h2>
+  <div class="cols">
+    <p>Many adults who meet guideline criteria for statin therapy are not on one. Finding them means reading each record for diagnoses, medications and stop dates, lipid panels and blood pressure within the last year, and then applying the 2018 AHA/ACC and USPSTF 2022 rules. That work is tedious for people and error-prone for a language model.</p>
+    <p><b>Users:</b> primary care teams and population-health staff reviewing panels of patients. <b>Output:</b> one of six categories per patient — on statin, contraindicated, indicated (a care gap), consider, not indicated, insufficient data — with the facts and evidence behind it. An automated answer is only given when the system is confident and its facts pass a rule check.</p>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">How it works</div>
+  <h2>One agent, a rule checker, repeated runs, and a clinician</h2>
+  <div class="scroll box" style="padding:12px"><svg id="pipe" viewBox="0 0 1010 220" width="100%" style="min-width:720px;display:block" role="img" aria-label="Pipeline diagram"></svg></div>
+  <p class="muted">Model: Qwen3-8B (open weights) served locally with vLLM. Data: Synthea synthetic records in DuckDB, coded with SNOMED, RxNorm and LOINC. The guideline arithmetic (pooled cohort equations) is a tool, not left to the model.</p>
+</section>
+
+<section id="agent">
+  <div class="eyebrow">Result 1 · Reading the record</div>
+  <h2>Each layer removes wrong automated decisions</h2>
+  <div class="row">
+    <div class="seg" role="group" aria-label="Sample">
+      <button id="runRandom" aria-pressed="true">Random 300 patients</button>
+      <button id="runStrat" aria-pressed="false">Stratified 84 patients</button>
+    </div>
+    <span class="muted" id="runNote" style="font-size:13px"></span>
+  </div>
+  <div class="box">
+    <div class="legend" style="margin-bottom:10px"><span><i style="background:var(--ok)"></i>Automated, correct</span><span><i style="background:var(--bad)"></i>Automated, wrong</span><span><i style="background:var(--wait)"></i>Sent to clinician</span></div>
+    <svg id="stack" width="100%" role="img" aria-label="Outcome per configuration"></svg>
+  </div>
+  <div class="box scroll"><table id="tbl"></table></div>
+  <div>
+    <div class="box">
+      <h3 style="margin-bottom:4px">Field extraction errors</h3>
+      <p class="muted" style="font-size:13px;margin-bottom:8px">Share of patients where a fact was wrong: first attempt <span style="color:var(--bad)">●</span> → after self-check <span style="color:var(--ok)">●</span></p>
+      <svg id="fields" width="100%" role="img" aria-label="Field error rates"></svg>
+    </div>
+  </div>
+</section>
+
+<section id="replay1">
+  <div class="eyebrow">Replay · three real patients from the random run</div>
+  <h2>Watch the agent work</h2>
+  <div class="tabs" id="exTabs" role="tablist"></div>
+  <div class="row"><button class="btn primary" id="exPlay">▶ Replay step by step</button><button class="btn" id="exAll">Show all</button><span class="muted" id="exProg" style="font-size:13px"></span></div>
+  <div class="story" id="exStory"></div>
+  <div class="replay">
+    <div class="steps" id="exSteps"></div>
+    <div style="display:grid;gap:14px;grid-template-columns:minmax(0,1fr)">
+      <div class="box"><h3 style="margin-bottom:8px">Extracted facts</h3><div class="scroll"><table class="facts" id="exFacts"></table></div><p class="muted" style="font-size:12px;margin-top:8px">Highlighted: changed after the self-check feedback.</p></div>
+      <div class="box cat" id="exDecision"></div>
+    </div>
+  </div>
+</section>
+
+<section id="conv">
+  <div class="eyebrow">Result 2 · Talking with the patient</div>
+  <h2>A conversation fills gaps the record cannot</h2>
+  <p>Records miss things: a statin stopped months ago, side effects never coded, labs done at another clinic, a patient who started smoking. For 50 patients a simulated patient (also an LLM, given the true facts) was interviewed by the agent, which could ask questions, record findings with a quoted piece of evidence, and escalate to a clinician.</p>
+  <div class="stats" id="cstats"></div>
+  <div class="box">
+    <h3 style="margin-bottom:4px">Correct category, by scenario</h3>
+    <p class="muted" style="font-size:13px;margin-bottom:8px">From the record alone <span style="color:var(--bad)">●</span> → after the interview <span style="color:var(--ok)">●</span> · 10 patients each</p>
+    <svg id="ctype" width="100%" role="img" aria-label="Accuracy by scenario"></svg>
+  </div>
+</section>
+
+<section id="replay2">
+  <div class="eyebrow">Replay · four interviews, including a failure</div>
+  <h2>Watch a conversation change the decision</h2>
+  <div class="tabs" id="ivTabs" role="tablist"></div>
+  <div class="row"><button class="btn primary" id="ivPlay">▶ Replay conversation</button><button class="btn" id="ivAll">Show all</button></div>
+  <div class="story" id="ivStory"></div>
+  <div class="replay">
+    <div class="chat" id="ivChat"></div>
+    <div style="display:grid;gap:14px;grid-template-columns:minmax(0,1fr)">
+      <div class="box"><h3 style="margin-bottom:8px">Record vs. what the patient said</h3><div class="scroll"><table class="facts" id="ivFacts"></table></div></div>
+      <div class="box cat" id="ivDecision"></div>
+    </div>
+  </div>
+  <div class="legend"><span><i style="background:var(--ok)"></i>Finding with supporting evidence</span><span><i style="background:var(--wait)"></i>Quoted evidence does not contain the value</span><span><i style="background:var(--bad)"></i>Escalated to clinician</span></div>
+</section>
+
+<section>
+  <div class="eyebrow">What this shows, and what it doesn't</div>
+  <h2>Limits and next steps</h2>
+  <div class="cols">
+    <div class="box"><h3 style="margin-bottom:8px">Limits</h3><ul class="plain">
+      <li>Synthetic records and simplified guideline rules. The labels measure faithful extraction and procedure, not clinical correctness.</li>
+      <li>The prompt was tuned on 30 development patients, who also fall in the formal samples (same sampling seed).</li>
+      <li>One model, one prompt. The simulated patient is an LLM and is more cooperative than real patients.</li>
+      <li>Safety comes at a cost: 22% of the random sample went to a clinician.</li>
+    </ul></div>
+    <div class="box"><h3 style="margin-bottom:8px">Failure types seen in transcripts</h3><ul class="plain">
+      <li><b>Understood but not recorded.</b> The agent mentions intolerance in its summary and escalates, but never records the finding, so the decision does not change.</li>
+      <li><b>Evidence that does not support the value.</b> Lab values copied from the record, with a quote saying no test was done (27 of 163 findings).</li>
+      <li><b>Stale data.</b> Labs older than one year used as current, caught by the rule check.</li>
+    </ul></div>
+    <div class="box"><h3 style="margin-bottom:8px">Next steps</h3><ul class="plain">
+      <li>Budget-aware review order: choose which patients to review first under a token and clinician-time budget, using cost-aware Bayesian active learning.</li>
+      <li>Use the rule checker as a reward for fine-tuning (rejection-sampling SFT, then RL) so fewer cases need deferral.</li>
+      <li>Real de-identified records with free-text notes, and clinician review of deferred cases.</li>
+    </ul></div>
+  </div>
+</section>
+
+<footer>
+  <div><a href="https://github.com/BoyangASU/statin-care-gap-agent" style="color:var(--accent)">Code on GitHub</a></div>
+  <div>Prototype by Boyang Xu (Arizona State University), built with AI coding assistance. All numbers come from runs of Qwen3-8B on Synthea synthetic records; no real patient data was used.</div>
+  <div>Random sample: 300 patients drawn at random from the cohort. Stratified sample: 20 per category, but the cohort has only 4 "consider" patients, so 84 in total.</div>
+</footer>
+</div>
+
+<script>
+const D = {"agent":{"random":{"n":300,"table":[{"index":"single pass","n":300.0,"accuracy_all":0.75,"coverage":1.0,"accuracy_automated":0.75,"wrong_automated":75.0,"deferred":0.0,"care_gap_precision":0.56,"care_gap_recall_automated":0.966},{"index":"+ self-check","n":300.0,"accuracy_all":0.947,"coverage":0.887,"accuracy_automated":0.992,"wrong_automated":2.0,"deferred":34.0,"care_gap_precision":1.0,"care_gap_recall_automated":0.897},{"index":"+ self-consistency + deferral","n":300.0,"accuracy_all":0.983,"coverage":0.78,"accuracy_automated":1.0,"wrong_automated":0.0,"deferred":66.0,"care_gap_precision":1.0,"care_gap_recall_automated":0.862}],"fields":[{"field":"on_statin","error_rate_first":0.007,"error_rate_after":0.0},{"field":"statin_intolerance","error_rate_first":0.0,"error_rate_after":0.0},{"field":"ascvd","error_rate_first":0.027,"error_rate_after":0.023},{"field":"diabetes","error_rate_first":0.003,"error_rate_after":0.003},{"field":"smoker","error_rate_first":0.0,"error_rate_after":0.0},{"field":"bp_treated","error_rate_first":0.037,"error_rate_after":0.02},{"field":"hypertension","error_rate_first":0.063,"error_rate_after":0.073},{"field":"ldl","error_rate_first":0.253,"error_rate_after":0.057},{"field":"total_chol","error_rate_first":0.27,"error_rate_after":0.043},{"field":"hdl","error_rate_first":0.263,"error_rate_after":0.05},{"field":"sbp","error_rate_first":0.123,"error_rate_after":0.037}],"labels":{"insufficient_data":113,"on_statin":111,"not_indicated":45,"indicated":29,"consider":2}},"stratified":{"n":84,"table":[{"index":"single pass","n":84.0,"accuracy_all":0.833,"coverage":1.0,"accuracy_automated":0.833,"wrong_automated":14.0,"deferred":0.0,"care_gap_precision":0.741,"care_gap_recall_automated":1.0},{"index":"+ self-check","n":84.0,"accuracy_all":0.929,"coverage":0.893,"accuracy_automated":0.987,"wrong_automated":1.0,"deferred":9.0,"care_gap_precision":1.0,"care_gap_recall_automated":0.9},{"index":"+ self-consistency + deferral","n":84.0,"accuracy_all":0.94,"coverage":0.726,"accuracy_automated":1.0,"wrong_automated":0.0,"deferred":23.0,"care_gap_precision":1.0,"care_gap_recall_automated":0.9}],"fields":[{"field":"on_statin","error_rate_first":0.012,"error_rate_after":0.012},{"field":"statin_intolerance","error_rate_first":0.0,"error_rate_after":0.0},{"field":"ascvd","error_rate_first":0.036,"error_rate_after":0.048},{"field":"diabetes","error_rate_first":0.0,"error_rate_after":0.012},{"field":"smoker","error_rate_first":0.0,"error_rate_after":0.0},{"field":"bp_treated","error_rate_first":0.012,"error_rate_after":0.0},{"field":"hypertension","error_rate_first":0.071,"error_rate_after":0.083},{"field":"ldl","error_rate_first":0.202,"error_rate_after":0.036},{"field":"total_chol","error_rate_first":0.286,"error_rate_after":0.0},{"field":"hdl","error_rate_first":0.214,"error_rate_after":0.012},{"field":"sbp","error_rate_first":0.143,"error_rate_after":0.048}],"labels":{"on_statin":20,"not_indicated":20,"insufficient_data":20,"indicated":20,"consider":4}}},"examples":[{"why":"Care gap found automatically","patient":"6d9dc108","reference":"indicated","final":"indicated","confidence":1.0,"deferred":false,"verified":true,"votes":["indicated","indicated","indicated"],"first_attempt":{"category":"indicated","facts":{"age":62,"sex":"female","race":"asian","on_statin":false,"statin_intolerance":false,"ascvd":true,"diabetes":true,"smoker":false,"bp_treated":true,"hypertension":true,"ldl":95.8,"total_chol":168.2,"hdl":45.8,"sbp":133.0},"trace":[{"tool":"get_demographics","args":{},"output":"{\"age\": 62, \"sex\": \"female\", \"race\": \"asian\", \"index_date\": \"2026-11-09\"}"},{"tool":"list_conditions","args":{},"output":"[{\"code\": \"473461003\", \"description\": \"Educated to high school level (finding)\", \"onset\": \"1982-05-30\", \"resolved\": null}, {\"code\": \"59621000\", \"description\": \"Essential hypertension (disorder)\", \"onset\": \"2001-06-24\", \"resolved\": null}, {\"code\": \"431856006\", \"description\": \"Chronic kidney disease stage 2 (disorder)\", \"onset\": \"2003-07-06\", \"resolved\": \"2025-09-21\"}, {\"code\": \"127013003\", \"description\": \"Disorder of kidney due to diabetes mellitus (disorder)\", \"onset\": \"2003-07-06\", \"resolved\":  ..."},{"tool":"list_medications","args":{},"output":"[{\"description\": \"ferrous sulfate 325 MG Oral Tablet\", \"first_start\": \"1990-03-25\", \"most_recent_start\": \"1990-03-25\", \"most_recent_stop\": null}, {\"description\": \"insulin isophane  human 70 UNT/ML / insulin  regular  human 30 UNT/ML Injectable Suspension [Humulin]\", \"first_start\": \"2016-10-23\", \"most_recent_start\": \"2025-11-30\", \"most_recent_stop\": null}, {\"description\": \"lisinopril 10 MG Oral Tablet\", \"first_start\": \"2016-10-23\", \"most_recent_start\": \"2025-11-30\", \"most_recent_stop\": null}, {\"d ..."},{"tool":"list_allergies","args":{},"output":"[]"},{"tool":"get_observations","args":{"loinc":"18262-6","limit":1},"output":"[{\"date\": \"2025-11-30\", \"days_before_index\": 344, \"loinc\": \"18262-6\", \"name\": \"Cholesterol in LDL [Mass/volume] in Serum or Plasma by Direct assay\", \"value\": \"95.8\", \"units\": \"mg/dL\"}]"},{"tool":"get_observations","args":{"loinc":"2093-3","limit":1},"output":"[{\"date\": \"2025-11-30\", \"days_before_index\": 344, \"loinc\": \"2093-3\", \"name\": \"Cholesterol [Mass/volume] in Serum or Plasma\", \"value\": \"168.2\", \"units\": \"mg/dL\"}]"},{"tool":"get_observations","args":{"loinc":"2085-9","limit":1},"output":"[{\"date\": \"2025-11-30\", \"days_before_index\": 344, \"loinc\": \"2085-9\", \"name\": \"Cholesterol in HDL [Mass/volume] in Serum or Plasma\", \"value\": \"45.8\", \"units\": \"mg/dL\"}]"},{"tool":"get_observations","args":{"loinc":"8480-6","limit":1},"output":"[{\"date\": \"2025-11-30\", \"days_before_index\": 344, \"loinc\": \"8480-6\", \"name\": \"Systolic Blood Pressure\", \"value\": \"133.0\", \"units\": \"mm[Hg]\"}]"},{"tool":"get_observations","args":{"loinc":"72166-2","limit":1},"output":"[{\"date\": \"2025-11-30\", \"days_before_index\": 344, \"loinc\": \"72166-2\", \"name\": \"Tobacco smoking status\", \"value\": \"Ex-smoker (finding)\", \"units\": null}]"},{"tool":"check_statin_guideline","args":{"age":62,"sex":"female","race":"asian","on_statin":false,"statin_intolerance":false,"ascvd":true,"diabetes":true,"smoker":false,"bp_treated":true,"hypertension":true,"ldl":95.8,"total_chol":168.2,"hdl":45.8,"sbp":133.0},"output":"{\"category\": \"indicated\", \"ten_year_ascvd_risk\": null}"}],"problems":[]},"retry":null},{"why":"Self-check caught an error and the retry fixed it","patient":"68b54428","reference":"insufficient_data","final":"insufficient_data","confidence":1.0,"deferred":false,"verified":true,"votes":["insufficient_data","insufficient_data","insufficient_data"],"first_attempt":{"category":"insufficient_data","facts":{"age":73,"sex":"female","race":"white","on_statin":false,"statin_intolerance":false,"ascvd":false,"diabetes":false,"smoker":false,"bp_treated":false,"hypertension":false,"ldl":61.8,"total_chol":null,"hdl":57.5,"sbp":null},"trace":[{"tool":"get_demographics","args":{},"output":"{\"age\": 73, \"sex\": \"female\", \"race\": \"white\", \"index_date\": \"2026-11-09\"}"},{"tool":"list_conditions","args":{},"output":"[{\"code\": \"105531004\", \"description\": \"Housing unsatisfactory (finding)\", \"onset\": \"1971-10-30\", \"resolved\": null}, {\"code\": \"473461003\", \"description\": \"Educated to high school level (finding)\", \"onset\": \"1971-10-30\", \"resolved\": null}, {\"code\": \"162864005\", \"description\": \"Body mass index 30+ - obesity (finding)\", \"onset\": \"1995-09-16\", \"resolved\": null}, {\"code\": \"239873007\", \"description\": \"Osteoarthritis of knee (disorder)\", \"onset\": \"2007-01-06\", \"resolved\": null}, {\"code\": \"160903007\", \"d ..."},{"tool":"list_medications","args":{},"output":"[{\"description\": \"Naproxen sodium 220 MG Oral Tablet\", \"first_start\": \"2007-01-06\", \"most_recent_start\": \"2007-01-06\", \"most_recent_stop\": null}, {\"description\": \"sodium fluoride 0.0272 MG/MG Oral Gel\", \"first_start\": \"2016-12-03\", \"most_recent_start\": \"2025-01-18\", \"most_recent_stop\": \"2025-01-18\"}]"},{"tool":"list_allergies","args":{},"output":"[]"},{"tool":"get_observations","args":{"loinc":"18262-6","keyword":"LDL","limit":1},"output":"[{\"date\": \"2025-01-04\", \"days_before_index\": 674, \"loinc\": \"18262-6\", \"name\": \"Cholesterol in LDL [Mass/volume] in Serum or Plasma by Direct assay\", \"value\": \"61.8\", \"units\": \"mg/dL\"}]"},{"tool":"get_observations","args":{"loinc":"2093-3","keyword":"total cholesterol","limit":1},"output":"[]"},{"tool":"get_observations","args":{"loinc":"2085-9","keyword":"HDL","limit":1},"output":"[{\"date\": \"2025-01-04\", \"days_before_index\": 674, \"loinc\": \"2085-9\", \"name\": \"Cholesterol in HDL [Mass/volume] in Serum or Plasma\", \"value\": \"57.5\", \"units\": \"mg/dL\"}]"},{"tool":"get_observations","args":{"loinc":"8480-6","keyword":"systolic BP","limit":1},"output":"[]"},{"tool":"get_observations","args":{"loinc":"72166-2","keyword":"smoking","limit":1},"output":"[{\"date\": \"2026-01-10\", \"days_before_index\": 303, \"loinc\": \"72166-2\", \"name\": \"Tobacco smoking status\", \"value\": \"Never smoked tobacco (finding)\", \"units\": null}]"},{"tool":"compute_ascvd_risk","args":{"age":73,"sex":"female","race":"white","total_chol":null,"hdl":57.5,"sbp":null,"bp_treated":false,"smoker":false,"diabetes":false},"output":"{\"error\": \"TypeError: float() argument must be a string or a real number, not 'NoneType'\"}"},{"tool":"check_statin_guideline","args":{"age":73,"sex":"female","race":"white","on_statin":false,"statin_intolerance":false,"ascvd":false,"diabetes":false,"smoker":false,"bp_treated":false,"hypertension":false,"ldl":61.8,"total_chol":null,"hdl":57.5,"sbp":null},"output":"{\"category\": \"insufficient_data\", \"ten_year_ascvd_risk\": null}"},{"tool":"get_observations","args":{"loinc":"2093-3","keyword":"total cholesterol","limit":1},"output":"[]"},{"tool":"get_observations","args":{"loinc":"8480-6","keyword":"systolic BP","limit":1},"output":"[]"}],"problems":["ldl=61.8, but the most recent plausible LDL within 365 days is None. Re-check dates (365-day window) and discard implausible values.","hdl=57.5, but the most recent plausible HDL within 365 days is None. Re-check dates (365-day window) and discard implausible values.","sbp=None, but the most recent plausible systolic BP within 365 days is 138.0. Re-check dates (365-day window) and discard implausible values."]},"retry":{"category":"insufficient_data","facts":{"age":73,"sex":"female","race":"white","on_statin":false,"statin_intolerance":false,"ascvd":false,"diabetes":false,"smoker":false,"bp_treated":false,"hypertension":false,"ldl":null,"total_chol":null,"hdl":null,"sbp":138.0},"trace":[{"tool":"get_demographics","args":{},"output":"{\"age\": 73, \"sex\": \"female\", \"race\": \"white\", \"index_date\": \"2026-11-09\"}"},{"tool":"list_conditions","args":{},"output":"[{\"code\": \"105531004\", \"description\": \"Housing unsatisfactory (finding)\", \"onset\": \"1971-10-30\", \"resolved\": null}, {\"code\": \"473461003\", \"description\": \"Educated to high school level (finding)\", \"onset\": \"1971-10-30\", \"resolved\": null}, {\"code\": \"162864005\", \"description\": \"Body mass index 30+ - obesity (finding)\", \"onset\": \"1995-09-16\", \"resolved\": null}, {\"code\": \"239873007\", \"description\": \"Osteoarthritis of knee (disorder)\", \"onset\": \"2007-01-06\", \"resolved\": null}, {\"code\": \"160903007\", \"d ..."},{"tool":"list_medications","args":{},"output":"[{\"description\": \"Naproxen sodium 220 MG Oral Tablet\", \"first_start\": \"2007-01-06\", \"most_recent_start\": \"2007-01-06\", \"most_recent_stop\": null}, {\"description\": \"sodium fluoride 0.0272 MG/MG Oral Gel\", \"first_start\": \"2016-12-03\", \"most_recent_start\": \"2025-01-18\", \"most_recent_stop\": \"2025-01-18\"}]"},{"tool":"list_allergies","args":{},"output":"[]"},{"tool":"get_observations","args":{"loinc":"18262-6","limit":1},"output":"[{\"date\": \"2025-01-04\", \"days_before_index\": 674, \"loinc\": \"18262-6\", \"name\": \"Cholesterol in LDL [Mass/volume] in Serum or Plasma by Direct assay\", \"value\": \"61.8\", \"units\": \"mg/dL\"}]"},{"tool":"get_observations","args":{"loinc":"2085-9","limit":1},"output":"[{\"date\": \"2025-01-04\", \"days_before_index\": 674, \"loinc\": \"2085-9\", \"name\": \"Cholesterol in HDL [Mass/volume] in Serum or Plasma\", \"value\": \"57.5\", \"units\": \"mg/dL\"}]"},{"tool":"get_observations","args":{"loinc":"8480-6","limit":1},"output":"[{\"date\": \"2026-01-10\", \"days_before_index\": 303, \"loinc\": \"8480-6\", \"name\": \"Systolic Blood Pressure\", \"value\": \"138.0\", \"units\": \"mm[Hg]\"}]"},{"tool":"get_observations","args":{"loinc":"72166-2","limit":1},"output":"[{\"date\": \"2026-01-10\", \"days_before_index\": 303, \"loinc\": \"72166-2\", \"name\": \"Tobacco smoking status\", \"value\": \"Never smoked tobacco (finding)\", \"units\": null}]"},{"tool":"compute_ascvd_risk","args":{"age":73,"sex":"female","race":"white","total_chol":null,"hdl":null,"sbp":138.0,"bp_treated":false,"smoker":false,"diabetes":false},"output":"{\"error\": \"TypeError: float() argument must be a string or a real number, not 'NoneType'\"}"},{"tool":"check_statin_guideline","args":{"age":73,"sex":"female","race":"white","on_statin":false,"statin_intolerance":false,"ascvd":false,"diabetes":false,"smoker":false,"bp_treated":false,"hypertension":false,"ldl":null,"total_chol":null,"hdl":null,"sbp":138.0},"output":"{\"category\": \"insufficient_data\", \"ten_year_ascvd_risk\": null}"}],"problems":[]}},{"why":"Wrong answer stopped by deferral","patient":"ff599795","reference":"insufficient_data","final":"not_indicated","confidence":0.6666666666666666,"deferred":true,"verified":false,"votes":["not_indicated","not_indicated","insufficient_data"],"first_attempt":{"category":"insufficient_data","facts":{"age":54,"sex":"female","race":"white","on_statin":false,"statin_intolerance":false,"ascvd":false,"diabetes":false,"smoker":false,"bp_treated":false,"hypertension":false,"ldl":null,"total_chol":null,"hdl":null,"sbp":null},"trace":[{"tool":"get_demographics","args":{},"output":"{\"age\": 54, \"sex\": \"female\", \"race\": \"white\", \"index_date\": \"2026-11-09\"}"},{"tool":"list_medications","args":{},"output":"[{\"description\": \"levonorgestrel 0.000833 MG/HR Intrauterine System [Mirena]\", \"first_start\": \"2020-02-16\", \"most_recent_start\": \"2020-02-16\", \"most_recent_stop\": \"2021-02-12\"}, {\"description\": \"{7 (ethinyl estradiol 0.01 MG Oral Tablet) / 84 (ethinyl estradiol 0.03 MG / levonorgestrel 0.15 MG Oral Tablet) } Pack [Seasonique]\", \"first_start\": \"2021-02-12\", \"most_recent_start\": \"2021-02-12\", \"most_recent_stop\": \"2022-02-07\"}, {\"description\": \"Naproxen sodium 220 MG Oral Tablet\", \"first_start\": \"2 ..."},{"tool":"list_allergies","args":{},"output":"[]"},{"tool":"list_conditions","args":{},"output":"[{\"code\": \"196416002\", \"description\": \"Impacted molars (disorder)\", \"onset\": \"1990-02-04\", \"resolved\": null}, {\"code\": \"82423001\", \"description\": \"Chronic pain (finding)\", \"onset\": \"1990-05-01\", \"resolved\": null}, {\"code\": \"473461003\", \"description\": \"Educated to high school level (finding)\", \"onset\": \"1990-06-01\", \"resolved\": null}, {\"code\": \"124171000119105\", \"description\": \"Chronic intractable migraine without aura (disorder)\", \"onset\": \"1990-09-22\", \"resolved\": null}, {\"code\": \"6525002\", \"de ..."},{"tool":"get_observations","args":{"loinc":"18262-6","keyword":"LDL","limit":1},"output":"[{\"date\": \"2025-04-25\", \"days_before_index\": 563, \"loinc\": \"18262-6\", \"name\": \"Cholesterol in LDL [Mass/volume] in Serum or Plasma by Direct assay\", \"value\": \"185.7\", \"units\": \"mg/dL\"}]"},{"tool":"get_observations","args":{"loinc":"2093-3","keyword":"total cholesterol","limit":1},"output":"[]"},{"tool":"get_observations","args":{"loinc":"2085-9","keyword":"HDL","limit":1},"output":"[{\"date\": \"2025-04-25\", \"days_before_index\": 563, \"loinc\": \"2085-9\", \"name\": \"Cholesterol in HDL [Mass/volume] in Serum or Plasma\", \"value\": \"57.3\", \"units\": \"mg/dL\"}]"},{"tool":"get_observations","args":{"loinc":"8480-6","keyword":"systolic BP","limit":1},"output":"[]"},{"tool":"get_observations","args":{"loinc":"72166-2","keyword":"smoking","limit":1},"output":"[{\"date\": \"2026-09-04\", \"days_before_index\": 66, \"loinc\": \"72166-2\", \"name\": \"Tobacco smoking status\", \"value\": \"Ex-smoker (finding)\", \"units\": null}]"},{"tool":"compute_ascvd_risk","args":{"age":54,"sex":"female","race":"white","total_chol":null,"hdl":null,"sbp":null,"bp_treated":false,"smoker":false,"diabetes":false},"output":"{\"error\": \"TypeError: float() argument must be a string or a real number, not 'NoneType'\"}"},{"tool":"check_statin_guideline","args":{"age":54,"sex":"female","race":"white","on_statin":false,"statin_intolerance":false,"ascvd":false,"diabetes":false,"smoker":false,"bp_treated":false,"hypertension":false,"ldl":null,"total_chol":null,"hdl":null,"sbp":null},"output":"{\"category\": \"insufficient_data\", \"ten_year_ascvd_risk\": null}"}],"problems":["sbp=None, but the most recent plausible systolic BP within 365 days is 117.0. Re-check dates (365-day window) and discard implausible values."]},"retry":{"category":"not_indicated","facts":{"age":54,"sex":"female","race":"white","on_statin":false,"statin_intolerance":false,"ascvd":false,"diabetes":false,"smoker":false,"bp_treated":false,"hypertension":false,"ldl":185.7,"total_chol":270.5,"hdl":57.3,"sbp":117.0},"trace":[{"tool":"get_demographics","args":{},"output":"{\"age\": 54, \"sex\": \"female\", \"race\": \"white\", \"index_date\": \"2026-11-09\"}"},{"tool":"list_conditions","args":{},"output":"[{\"code\": \"196416002\", \"description\": \"Impacted molars (disorder)\", \"onset\": \"1990-02-04\", \"resolved\": null}, {\"code\": \"82423001\", \"description\": \"Chronic pain (finding)\", \"onset\": \"1990-05-01\", \"resolved\": null}, {\"code\": \"473461003\", \"description\": \"Educated to high school level (finding)\", \"onset\": \"1990-06-01\", \"resolved\": null}, {\"code\": \"124171000119105\", \"description\": \"Chronic intractable migraine without aura (disorder)\", \"onset\": \"1990-09-22\", \"resolved\": null}, {\"code\": \"6525002\", \"de ..."},{"tool":"list_medications","args":{},"output":"[{\"description\": \"levonorgestrel 0.000833 MG/HR Intrauterine System [Mirena]\", \"first_start\": \"2020-02-16\", \"most_recent_start\": \"2020-02-16\", \"most_recent_stop\": \"2021-02-12\"}, {\"description\": \"{7 (ethinyl estradiol 0.01 MG Oral Tablet) / 84 (ethinyl estradiol 0.03 MG / levonorgestrel 0.15 MG Oral Tablet) } Pack [Seasonique]\", \"first_start\": \"2021-02-12\", \"most_recent_start\": \"2021-02-12\", \"most_recent_stop\": \"2022-02-07\"}, {\"description\": \"Naproxen sodium 220 MG Oral Tablet\", \"first_start\": \"2 ..."},{"tool":"list_allergies","args":{},"output":"[]"},{"tool":"get_observations","args":{"loinc":"8480-6","limit":1},"output":"[{\"date\": \"2026-09-04\", \"days_before_index\": 66, \"loinc\": \"8480-6\", \"name\": \"Systolic Blood Pressure\", \"value\": \"117.0\", \"units\": \"mm[Hg]\"}]"},{"tool":"get_observations","args":{"loinc":"18262-6","limit":1},"output":"[{\"date\": \"2025-04-25\", \"days_before_index\": 563, \"loinc\": \"18262-6\", \"name\": \"Cholesterol in LDL [Mass/volume] in Serum or Plasma by Direct assay\", \"value\": \"185.7\", \"units\": \"mg/dL\"}]"},{"tool":"get_observations","args":{"loinc":"2093-3","limit":1},"output":"[{\"date\": \"2025-04-25\", \"days_before_index\": 563, \"loinc\": \"2093-3\", \"name\": \"Cholesterol [Mass/volume] in Serum or Plasma\", \"value\": \"270.5\", \"units\": \"mg/dL\"}]"},{"tool":"get_observations","args":{"loinc":"2085-9","limit":1},"output":"[{\"date\": \"2025-04-25\", \"days_before_index\": 563, \"loinc\": \"2085-9\", \"name\": \"Cholesterol in HDL [Mass/volume] in Serum or Plasma\", \"value\": \"57.3\", \"units\": \"mg/dL\"}]"},{"tool":"get_observations","args":{"loinc":"72166-2","limit":1},"output":"[{\"date\": \"2026-09-04\", \"days_before_index\": 66, \"loinc\": \"72166-2\", \"name\": \"Tobacco smoking status\", \"value\": \"Ex-smoker (finding)\", \"units\": null}]"},{"tool":"compute_ascvd_risk","args":{"age":54,"sex":"female","race":"white","total_chol":270.5,"hdl":57.3,"sbp":117.0,"bp_treated":false,"smoker":false,"diabetes":false},"output":"{\"ten_year_ascvd_risk\": 0.0203}"},{"tool":"check_statin_guideline","args":{"age":54,"sex":"female","race":"white","on_statin":false,"statin_intolerance":false,"ascvd":false,"diabetes":false,"smoker":false,"bp_treated":false,"hypertension":false,"ldl":185.7,"total_chol":270.5,"hdl":57.3,"sbp":117.0},"output":"{\"category\": \"not_indicated\", \"ten_year_ascvd_risk\": 0.0203}"}],"problems":["ldl=185.7, but the most recent plausible LDL within 365 days is None. Re-check dates (365-day window) and discard implausible values.","total_chol=270.5, but the most recent plausible total cholesterol within 365 days is None. Re-check dates (365-day window) and discard implausible values.","hdl=57.3, but the most recent plausible HDL within 365 days is None. Re-check dates (365-day window) and discard implausible values."]}}],"interviews":{"summary":{"scenarios":50,"category_correct_before":0.2,"category_correct_after":0.92,"hidden_care_gaps":15,"hidden_care_gaps_found":15,"intolerance_escalated":"6/10","escalations_without_cause":4,"wrong_changes":0,"unsupported_findings":"27/163","mean_questions":3.9,"finished":"50/50"},"by_type":[{"kind":"control","n":10,"correct_before":1.0,"correct_after":1.0,"fields_fixed":0,"fields_to_fix":0,"wrong_changes":0,"unsupported":6,"escalated":0.0,"questions":3.9},{"kind":"intolerance","n":10,"correct_before":0.0,"correct_after":0.8,"fields_fixed":8,"fields_to_fix":10,"wrong_changes":0,"unsupported":6,"escalated":0.6,"questions":3.2},{"kind":"now_smoker","n":10,"correct_before":0.0,"correct_after":1.0,"fields_fixed":10,"fields_to_fix":10,"wrong_changes":0,"unsupported":7,"escalated":0.4,"questions":3.9},{"kind":"outside_labs","n":10,"correct_before":0.0,"correct_after":0.8,"fields_fixed":21,"fields_to_fix":30,"wrong_changes":0,"unsupported":7,"escalated":0.0,"questions":4.3},{"kind":"stopped_statin","n":10,"correct_before":0.0,"correct_after":1.0,"fields_fixed":10,"fields_to_fix":10,"wrong_changes":0,"unsupported":1,"escalated":0.0,"questions":4.0}],"examples":[{"scenario":{"sid":"stop-4bf9098f","patient_id":"4bf9098f-a62e-60f9-a402-67fe989c84d6","kind":"stopped_statin","truth":{"age":67,"sex":"female","race":"white","on_statin":false,"statin_intolerance":false,"ascvd":true,"diabetes":true,"smoker":false,"bp_treated":true,"hypertension":true,"ldl":45.8,"total_chol":129.8,"hdl":56.2,"sbp":121.0},"record":{"age":67,"sex":"female","race":"white","on_statin":true,"statin_intolerance":false,"ascvd":true,"diabetes":true,"smoker":false,"bp_treated":true,"hypertension":true,"ldl":45.8,"total_chol":129.8,"hdl":56.2,"sbp":121.0},"statin_name":"simvastatin","detail":{"months_ago":4,"reason":"felt fine and thought it was not needed"},"truth_category":"indicated","record_category":"on_statin","changed_fields":["on_statin"]},"transcript":[{"role":"agent","text":"Are you currently taking a cholesterol medicine like a statin, or have you stopped one recently?"},{"role":"patient","text":"I stopped taking simvastatin about 4 months ago because I felt fine and thought it wasn\u2019t needed anymore. I haven\u2019t started anything new since then."},{"role":"agent","text":"Have you ever had any side effects from a statin, like muscle aches, weakness, or other problems?"},{"role":"patient","text":"No, I didn\u2019t have any side effects from simvastatin. I felt fine while taking it and didn\u2019t experience muscle aches or weakness."},{"role":"agent","text":"Have you had a cholesterol test anywhere in the past year that isn't in our record? If so, can you share your total cholesterol, HDL, and LDL numbers?"},{"role":"patient","text":"I don\u2019t remember having a cholesterol test outside of what\u2019s in our records. Do you have the numbers from any recent tests?"},{"role":"agent","text":"Do you currently smoke?"},{"role":"patient","text":"No, I don\u2019t smoke. I\u2019ve never smoked and haven\u2019t had any issues related to that."}],"findings":[{"field":"on_statin","value":false,"evidence":"I stopped taking simvastatin about 4 months ago because I felt fine and thought it wasn\u2019t needed anymore. I haven\u2019t started anything new since then."},{"field":"statin_intolerance","value":false,"evidence":"No, I didn\u2019t have any side effects from simvastatin. I felt fine while taking it and didn\u2019t experience muscle aches or weakness."},{"field":"total_chol","value":129.8,"evidence":"I don\u2019t remember having a cholesterol test outside of what\u2019s in our records. Do you have the numbers from any recent tests?"}],"escalations":[],"summary":"We've confirmed you're not currently on a statin, haven't had side effects, no recent cholesterol tests outside the record, and you're a non-smoker. Your clinician will review this information next.","score":{"sid":"stop-4bf9098f","kind":"stopped_statin","record_category":"on_statin","truth_category":"indicated","after_category":"indicated","correct_before":false,"correct_after":true,"fields_to_fix":1,"fields_fixed":1,"wrong_changes":0,"findings":3,"unsupported_findings":1,"hidden_gap":true,"hidden_gap_found":true,"escalated":false,"escalation_expected":false,"questions":4,"finished":true,"tokens":18869}},{"scenario":{"sid":"intol-9f736313","patient_id":"9f736313-9313-815f-e6d5-4e7f9e5d7e8e","kind":"intolerance","truth":{"age":41,"sex":"female","race":"white","on_statin":false,"statin_intolerance":true,"ascvd":false,"diabetes":false,"smoker":false,"bp_treated":false,"hypertension":false,"ldl":195.4,"total_chol":270.7,"hdl":48.7,"sbp":92.0},"record":{"age":41,"sex":"female","race":"white","on_statin":false,"statin_intolerance":false,"ascvd":false,"diabetes":false,"smoker":false,"bp_treated":false,"hypertension":false,"ldl":195.4,"total_chol":270.7,"hdl":48.7,"sbp":92.0},"statin_name":"atorvastatin","detail":{"months_ago":9},"truth_category":"contraindicated","record_category":"indicated","changed_fields":["statin_intolerance"]},"transcript":[{"role":"agent","text":"Are you currently taking a cholesterol medicine like a statin, or have you stopped one in the past year?"},{"role":"patient","text":"I stopped atorvastatin about 9 months ago because I had bad muscle aches and weakness in my thighs and shoulders. I\u2019m worried about starting another cholesterol pill again."},{"role":"agent","text":"Have you had a cholesterol test anywhere in the past year that isn't in your record?"},{"role":"patient","text":"I don\u2019t know if I had any cholesterol tests outside of what\u2019s in my record. I\u2019ve only mentioned the statin and muscle issues."},{"role":"agent","text":"Do you currently smoke?"},{"role":"patient","text":"No, I don\u2019t smoke."}],"findings":[{"field":"on_statin","value":false,"evidence":"I stopped atorvastatin about 9 months ago because I had bad muscle aches and weakness in my thighs and shoulders."},{"field":"statin_intolerance","value":true,"evidence":"I stopped atorvastatin about 9 months ago because I had bad muscle aches and weakness in my thighs and shoulders."},{"field":"smoker","value":false,"evidence":"No, I don\u2019t smoke."}],"escalations":["Patient reports statin intolerance due to muscle aches and weakness."],"summary":"The patient is not currently on a statin due to intolerance, has no recent cholesterol tests outside the record, and does not smoke.","score":{"sid":"intol-9f736313","kind":"intolerance","record_category":"indicated","truth_category":"contraindicated","after_category":"contraindicated","correct_before":false,"correct_after":true,"fields_to_fix":1,"fields_fixed":1,"wrong_changes":0,"findings":3,"unsupported_findings":0,"hidden_gap":false,"hidden_gap_found":false,"escalated":true,"escalation_expected":true,"questions":3,"finished":true,"tokens":14843}},{"scenario":{"sid":"labs-acb5f9fa","patient_id":"acb5f9fa-e85e-a8e8-9f6b-1978d95426e7","kind":"outside_labs","truth":{"age":42,"sex":"female","race":"white","on_statin":false,"statin_intolerance":false,"ascvd":false,"diabetes":false,"smoker":false,"bp_treated":false,"hypertension":false,"ldl":82.1,"total_chol":166.3,"hdl":56.6,"sbp":110.0},"record":{"age":42,"sex":"female","race":"white","on_statin":false,"statin_intolerance":false,"ascvd":false,"diabetes":false,"smoker":false,"bp_treated":false,"hypertension":false,"ldl":null,"total_chol":null,"hdl":null,"sbp":110.0},"statin_name":"","detail":{"months_ago":5,"where":"an urgent care clinic"},"truth_category":"not_indicated","record_category":"insufficient_data","changed_fields":["ldl","total_chol","hdl"]},"transcript":[{"role":"agent","text":"Are you currently taking a cholesterol medicine like a statin, or did you stop one recently?"},{"role":"patient","text":"No, I\u2019m not taking any cholesterol medicine like a statin, and I haven\u2019t stopped one recently."},{"role":"agent","text":"Have you ever experienced side effects from a statin, like muscle aches, weakness, or other problems?"},{"role":"patient","text":"No, I\u2019ve never taken a statin, so I haven\u2019t experienced any side effects from them."},{"role":"agent","text":"Have you had a cholesterol test anywhere in the past year that isn't in our clinic's record?"},{"role":"patient","text":"Yes, I had one at an urgent care clinic about 5 months ago, but it's not in our clinic's records yet."},{"role":"agent","text":"Can you share the total cholesterol, HDL, and LDL numbers from that test?"},{"role":"patient","text":"Total cholesterol was 166, HDL was 57, and LDL was 82."},{"role":"agent","text":"Do you currently smoke or use tobacco products?"},{"role":"patient","text":"No, I don\u2019t smoke or use any tobacco products."}],"findings":[{"field":"on_statin","value":false,"evidence":"No, I\u2019m not taking any cholesterol medicine like a statin, and I haven\u2019t stopped one recently."},{"field":"statin_intolerance","value":false,"evidence":"No, I\u2019ve never taken a statin, so I haven\u2019t experienced any side effects from them."},{"field":"total_chol","value":null,"evidence":"Yes, I had one at an urgent care clinic about 5 months ago, but it's not in our clinic's records yet."},{"field":"total_chol","value":166,"evidence":"Total cholesterol was 166, HDL was 57, and LDL was 82."},{"field":"hdl","value":57,"evidence":"Total cholesterol was 166, HDL was 57, and LDL was 82."},{"field":"ldl","value":82,"evidence":"Total cholesterol was 166, HDL was 57, and LDL was 82."},{"field":"smoker","value":false,"evidence":"No, I don\u2019t smoke or use any tobacco products."}],"escalations":[],"summary":"Confirmed no statin use, no statin side effects, recent lipid panel (total 166, HDL 57, LDL 82), and no current smoking. All eligibility factors addressed.","score":{"sid":"labs-acb5f9fa","kind":"outside_labs","record_category":"insufficient_data","truth_category":"not_indicated","after_category":"not_indicated","correct_before":false,"correct_after":true,"fields_to_fix":3,"fields_fixed":3,"wrong_changes":0,"findings":7,"unsupported_findings":1,"hidden_gap":false,"hidden_gap_found":false,"escalated":false,"escalation_expected":false,"questions":5,"finished":true,"tokens":33274}},{"scenario":{"sid":"intol-335f5e30","patient_id":"335f5e30-54ea-97ea-156f-ceec54b68ee4","kind":"intolerance","truth":{"age":43,"sex":"male","race":"hawaiian","on_statin":false,"statin_intolerance":true,"ascvd":false,"diabetes":true,"smoker":false,"bp_treated":true,"hypertension":true,"ldl":102.2,"total_chol":185.0,"hdl":54.8,"sbp":140.0},"record":{"age":43,"sex":"male","race":"hawaiian","on_statin":false,"statin_intolerance":false,"ascvd":false,"diabetes":true,"smoker":false,"bp_treated":true,"hypertension":true,"ldl":102.2,"total_chol":185.0,"hdl":54.8,"sbp":140.0},"statin_name":"simvastatin","detail":{"months_ago":6},"truth_category":"contraindicated","record_category":"indicated","changed_fields":["statin_intolerance"]},"transcript":[{"role":"agent","text":"Are you currently taking a cholesterol medicine like a statin, or have you stopped one in the past year?"},{"role":"patient","text":"I stopped simvastatin about six months ago because I had bad muscle aches and weakness in my thigh and shoulder. I haven\u2019t taken any statin in the past year."},{"role":"agent","text":"Have you had a cholesterol test anywhere in the past year that isn't in our record?"},{"role":"patient","text":"No, I haven\u2019t had a cholesterol test anywhere else in the past year. My records here are the only ones I\u2019ve had."},{"role":"agent","text":"Do you currently smoke?"},{"role":"patient","text":"No, I don\u2019t smoke."}],"findings":[{"field":"on_statin","value":false,"evidence":"I stopped simvastatin about six months ago because I had bad muscle aches and weakness in my thigh and shoulder. I haven\u2019t taken any statin in the past year."},{"field":"total_chol","value":185.0,"evidence":"No, I haven\u2019t had a cholesterol test anywhere else in the past year. My records here are the only ones I\u2019ve had."},{"field":"hdl","value":54.8,"evidence":"No, I haven\u2019t had a cholesterol test anywhere else in the past year. My records here are the only ones I\u2019ve had."},{"field":"ldl","value":102.2,"evidence":"No, I haven\u2019t had a cholesterol test anywhere else in the past year. My records here are the only ones I\u2019ve had."},{"field":"smoker","value":false,"evidence":"No, I don\u2019t smoke."}],"escalations":["Patient reported statin intolerance (muscle aches and weakness) leading to discontinuation of simvastatin."],"summary":"Patient is not currently on a statin, has statin intolerance due to muscle aches and weakness, no recent cholesterol tests outside the record, and is a non-smoker.","score":{"sid":"intol-335f5e30","kind":"intolerance","record_category":"indicated","truth_category":"contraindicated","after_category":"indicated","correct_before":false,"correct_after":false,"fields_to_fix":1,"fields_fixed":0,"wrong_changes":0,"findings":5,"unsupported_findings":3,"hidden_gap":false,"hidden_gap_found":false,"escalated":true,"escalation_expected":true,"questions":3,"finished":true,"tokens":17917}}]}};
+const $ = s => document.querySelector(s);
+const NS = "http://www.w3.org/2000/svg";
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const CAT = {on_statin:"On statin",contraindicated:"Contraindicated",indicated:"Indicated (care gap)",consider:"Consider",not_indicated:"Not indicated",insufficient_data:"Insufficient data"};
+const FIELDS = ["on_statin","statin_intolerance","ascvd","diabetes","smoker","bp_treated","hypertension","ldl","total_chol","hdl","sbp"];
+const FNAME = {on_statin:"On statin",statin_intolerance:"Statin intolerance",ascvd:"ASCVD",diabetes:"Diabetes",smoker:"Smoker",bp_treated:"BP treated",hypertension:"Hypertension",ldl:"LDL",total_chol:"Total cholesterol",hdl:"HDL",sbp:"Systolic BP"};
+const pct = x => Math.round(x*1000)/10 + "%";
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function svgEl(tag, attrs, parent, text){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;if(parent)parent.appendChild(e);return e;}
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+
+/* header stats */
+(function(){
+  const r = D.agent.random.table, iv = D.interviews.summary;
+  const items = [
+    [`${r[0].wrong_automated} → ${r[2].wrong_automated}`, "wrong automated decisions on 300 random patients (single pass → full pipeline)"],
+    [pct(r[2].coverage), "of patients still decided automatically; the rest go to a clinician"],
+    [`${r[0].care_gap_precision.toFixed(2)} → ${r[2].care_gap_precision.toFixed(2)}`, "precision of flagged care gaps"],
+    [`${iv.hidden_care_gaps_found} / ${iv.hidden_care_gaps}`, "care gaps hidden from the record found by interviewing the patient"],
+  ];
+  $("#stats").innerHTML = items.map(([b,s])=>`<div class="stat"><b>${b}</b><span>${s}</span></div>`).join("");
+})();
+
+/* pipeline diagram */
+(function(){
+  const s = $("#pipe");
+  const boxes = [
+    {x:10,  w:150, t:"Patient record", s:["conditions, meds,","labs, vitals (DuckDB)"]},
+    {x:200, w:170, t:"Agent (Qwen3-8B)", s:["calls tools, extracts","14 facts, applies rules"]},
+    {x:410, w:150, t:"Rule checker", s:["dates, units, codes","vs. the record"]},
+    {x:600, w:150, t:"3 independent runs", s:["majority vote,","confidence = agreement"]},
+  ];
+  const y=60,h=84;
+  boxes.forEach((b,i)=>{
+    svgEl("rect",{x:b.x,y,width:b.w,height:h,rx:6,fill:css("--surface"),stroke:i===1?css("--accent"):css("--line"),"stroke-width":i===1?2:1.2},s);
+    svgEl("text",{x:b.x+b.w/2,y:y+30,"text-anchor":"middle","font-weight":700,"font-size":14},s,b.t);
+    b.s.forEach((l,j)=>svgEl("text",{x:b.x+b.w/2,y:y+52+j*17,"text-anchor":"middle","font-size":12,class:"ax"},s,l));
+    if(i<boxes.length-1){const x1=b.x+b.w, x2=boxes[i+1].x; svgEl("path",{d:`M${x1+4} ${y+h/2} H${x2-6}`,stroke:css("--muted"),"stroke-width":1.5,fill:"none","marker-end":"url(#ah)"},s);}
+  });
+  const defs=svgEl("defs",{},s); const m=svgEl("marker",{id:"ah",viewBox:"0 0 10 10",refX:8,refY:5,markerWidth:7,markerHeight:7,orient:"auto"},defs); svgEl("path",{d:"M0 0 L10 5 L0 10 z",fill:css("--muted")},m);
+  // retry loop
+  svgEl("path",{d:`M485 ${y} V22 H285 V${y-6}`,stroke:css("--wait"),"stroke-width":1.5,fill:"none","stroke-dasharray":"5 4","marker-end":"url(#ah)"},s);
+  svgEl("text",{x:385,y:16,"text-anchor":"middle","font-size":12,fill:css("--wait")},s,"problems found → one retry with feedback");
+  // outputs
+  svgEl("path",{d:`M754 ${y+h/2-14} L800 46`,stroke:css("--muted"),"stroke-width":1.5,fill:"none","marker-end":"url(#ah)"},s);
+  svgEl("path",{d:`M754 ${y+h/2+14} L800 158`,stroke:css("--muted"),"stroke-width":1.5,fill:"none","marker-end":"url(#ah)"},s);
+  svgEl("rect",{x:805,y:20,width:195,height:56,rx:6,fill:css("--ok-soft"),stroke:css("--ok")},s);
+  svgEl("text",{x:902,y:43,"text-anchor":"middle","font-weight":700,"font-size":13,fill:css("--ok")},s,"Automated decision");
+  svgEl("text",{x:902,y:62,"text-anchor":"middle","font-size":11.5,class:"ax"},s,"agreement ≥ 0.8, verified");
+  svgEl("rect",{x:805,y:130,width:195,height:56,rx:6,fill:css("--wait-soft"),stroke:css("--wait")},s);
+  svgEl("text",{x:902,y:153,"text-anchor":"middle","font-weight":700,"font-size":13,fill:css("--wait")},s,"Send to clinician");
+  svgEl("text",{x:902,y:172,"text-anchor":"middle","font-size":11.5,class:"ax"},s,"otherwise");
+})();
+
+/* result 1 */
+let run = "random";
+function drawAgent(){
+  const R = D.agent[run];
+  $("#runRandom").setAttribute("aria-pressed", run==="random");
+  $("#runStrat").setAttribute("aria-pressed", run==="stratified");
+  const lab = R.labels;
+  $("#runNote").textContent = run==="random" ? `Real-world mix: ${lab.indicated} care gaps among ${R.n}` : `About 20 per category: ${lab.indicated} care gaps among ${R.n}`;
+  const s=$("#stack"); s.innerHTML="";
+  const W=900, L=230, rowH=46, H=R.table.length*rowH+30; s.setAttribute("viewBox",`0 0 ${W} ${H}`);
+  const sc = v => (W-L-20)*v/R.n;
+  R.table.forEach((t,i)=>{
+    const auto = Math.round(t.n*t.coverage), wrong=t.wrong_automated, def=t.deferred, ok=auto-wrong;
+    const y=i*rowH+6;
+    svgEl("text",{x:0,y:y+20,"font-size":14,"font-weight":600},s,t.index);
+    let x=L;
+    [[ok,"--ok"],[wrong,"--bad"],[def,"--wait"]].forEach(([v,c])=>{ if(v>0){ svgEl("rect",{x,y,width:sc(v),height:28,fill:css(c)},s); if(sc(v)>34) svgEl("text",{x:x+sc(v)/2,y:y+19,"text-anchor":"middle","font-size":12.5,"font-weight":600,fill:css("--surface")},s,v);} x+=sc(v); });
+    if(wrong>0 && sc(wrong)<=34) svgEl("text",{x:L+sc(ok)+sc(wrong)/2,y:y+42,"text-anchor":"middle","font-size":11.5,fill:css("--bad"),"font-weight":600},s,`${wrong} wrong`);
+  });
+  [0,.25,.5,.75,1].forEach(f=>{const x=L+(W-L-20)*f; svgEl("text",{x,y:H-4,"text-anchor":"middle",class:"ax"},s,Math.round(R.n*f));});
+  const rows=[["Accuracy, all patients","accuracy_all",pct],["Coverage (automated)","coverage",pct],["Accuracy, automated","accuracy_automated",pct],["Wrong automated","wrong_automated",v=>v],["Sent to clinician","deferred",v=>v],["Care-gap precision","care_gap_precision",v=>v.toFixed(2)],["Care-gap recall (automated)","care_gap_recall_automated",v=>v.toFixed(2)]];
+  $("#tbl").innerHTML = `<thead><tr><th></th>${R.table.map(t=>`<th>${esc(t.index.replace("+ self-consistency + deferral","+ votes & deferral"))}</th>`).join("")}</tr></thead><tbody>`+
+    rows.map(([n,k,f])=>`<tr><td>${n}</td>${R.table.map(t=>`<td>${f(t[k])}</td>`).join("")}</tr>`).join("")+`</tbody>`;
+  // field dumbbells
+  const fs=$("#fields"); fs.innerHTML="";
+  const FW=900, FL=170, fh=26, FH=R.fields.length*fh+26, max=.3; fs.setAttribute("viewBox",`0 0 ${FW} ${FH}`);
+  const fx=v=>FL+(FW-FL-16)*Math.min(v,max)/max;
+  [0,.1,.2,.3].forEach(v=>{svgEl("line",{x1:fx(v),x2:fx(v),y1:0,y2:FH-18,stroke:css("--line")},fs); svgEl("text",{x:fx(v),y:FH-4,"text-anchor":"middle",class:"ax"},fs,Math.round(v*100)+"%");});
+  R.fields.forEach((f,i)=>{const y=i*fh+12;
+    svgEl("text",{x:0,y:y+4,"font-size":12.5},fs,FNAME[f.field]||f.field);
+    svgEl("line",{x1:fx(f.error_rate_first),x2:fx(f.error_rate_after),y1:y,y2:y,stroke:css("--muted"),"stroke-width":1.5},fs);
+    svgEl("circle",{cx:fx(f.error_rate_first),cy:y,r:4.5,fill:css("--bad")},fs);
+    svgEl("circle",{cx:fx(f.error_rate_after),cy:y,r:4.5,fill:css("--ok")},fs);
+  });
+}
+$("#runRandom").onclick=()=>{run="random";drawAgent();};
+$("#runStrat").onclick=()=>{run="stratified";drawAgent();};
+
+/* replay 1 */
+const EX_STORY = [
+  "A 62-year-old woman with heart disease (ASCVD) and diabetes who is not on a statin. The agent pulls each lab separately, sees they are 344 days old (inside the one-year window), and the guideline tool returns <b>indicated</b>. The rule checker finds nothing wrong and all three runs agree, so the care gap is flagged automatically.",
+  "The first attempt used LDL and HDL from 674 days ago (outside the one-year window) and missed a blood pressure taken 303 days ago. The category happened to be right, for the wrong reasons. The rule checker named all three problems; on the retry the agent set the old labs to missing and recorded the blood pressure. Same category, now with correct facts, 3 of 3 runs agree.",
+  "The first attempt was correct but missed a blood pressure. On the retry the agent fixed the blood pressure but used lipid values from 563 days ago, which gave <b>not indicated</b>. The rule checker flagged the stale labs again. Two of three runs said not indicated, but that answer was never verified and agreement was 0.67 &lt; 0.8, so the case went to a clinician instead of being decided wrongly.",
+];
+const EX_TITLE = ["Care gap found automatically","Self-check corrected the facts","Deferral stopped a wrong answer"];
+let ex=0, exTimer=null;
+function fmtOut(o){
+  let t=o, cut=false; if(t.endsWith(" ...")){cut=true;}
+  try{const v=JSON.parse(t); if(Array.isArray(v)){ if(!v.length) return "(none)"; return v.map(it=>typeof it==="object"?Object.entries(it).filter(([k,x])=>x!==null&&k!=="loinc").map(([k,x])=>`${k}: ${x}`).join(" · "):String(it)).join("\n"); } if(typeof v==="object") return Object.entries(v).map(([k,x])=>`${k}: ${x}`).join(" · "); return String(v);}catch(e){}
+  const ds=[...t.matchAll(/"description": "([^"]*)"/g)].map(m=>m[1]);
+  if(ds.length) return ds.join("\n")+(cut?"\n…":"");
+  return t.replace(/[{}\[\]"]/g,"").replace(/,\s*/g,", ");
+}
+function fmtArgs(a){const e=Object.entries(a||{}); if(!e.length) return ""; return e.map(([k,v])=>`${k}=${v}`).join(", ");}
+function buildExEvents(E){
+  const ev=[];
+  ev.push({kind:"div",text:"Attempt 1"});
+  E.first_attempt.trace.forEach(t=>ev.push({kind:"tool",t}));
+  ev.push(E.first_attempt.problems.length?{kind:"err",p:E.first_attempt.problems}:{kind:"okv"});
+  if(E.retry){ ev.push({kind:"div",text:"Attempt 2 · retry with the checker's feedback"}); E.retry.trace.forEach(t=>ev.push({kind:"tool",t})); ev.push(E.retry.problems.length?{kind:"err",p:E.retry.problems,last:true}:{kind:"okv"}); }
+  ev.push({kind:"votes"});
+  return ev;
+}
+function renderEx(animate){
+  clearInterval(exTimer);
+  const E=D.examples[ex];
+  [...$("#exTabs").children].forEach((b,i)=>b.setAttribute("aria-selected",i===ex));
+  $("#exStory").innerHTML=EX_STORY[ex];
+  const ev=buildExEvents(E), box=$("#exSteps"); box.innerHTML="";
+  const nodes=ev.map(e=>{const d=document.createElement("div");
+    if(e.kind==="div"){d.className="divider";d.textContent=e.text;}
+    else if(e.kind==="tool"){d.className="step";const a=fmtArgs(e.t.args);d.innerHTML=`<div class="hd"><span class="tool">${esc(e.t.tool)}</span>${a?`<span class="args">${esc(a)}</span>`:""}</div><pre>${esc(fmtOut(e.t.output))}</pre>`;}
+    else if(e.kind==="err"){d.className="step err";d.innerHTML=`<div class="hd"><b>Rule checker: ${e.p.length} problem${e.p.length>1?"s":""}</b>${e.last?`<span class="chip bad">retry used, still unverified</span>`:`<span class="chip wait">sent back to the agent</span>`}</div><ul class="plain">${e.p.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`;}
+    else if(e.kind==="okv"){d.className="step okv";d.innerHTML=`<b>Rule checker: no problems</b>`;}
+    else if(e.kind==="votes"){d.className="step final";d.innerHTML=`<div class="hd"><b>Three independent runs</b></div><div class="row">${E.votes.map(v=>`<span class="chip ${v===E.final?"acc":""}">${esc(CAT[v])}</span>`).join("")}</div><div class="muted" style="font-size:13px">Agreement ${E.confidence.toFixed(2)} · majority answer ${E.verified?"verified":"not verified"}</div>`;}
+    if(e.kind!=="div") d.classList.add("pending"); else d.style.opacity=0;
+    box.appendChild(d); return d;});
+  // facts
+  const f1=E.first_attempt.facts||{}, f2=E.retry?E.retry.facts:null;
+  const show=v=>v===null||v===undefined?"—":v===true?"yes":v===false?"no":v;
+  $("#exFacts").innerHTML=`<thead><tr><th>Fact</th><th>Attempt 1</th>${f2?"<th>Retry</th>":""}</tr></thead><tbody>`+
+    ["age","sex",...FIELDS].map(k=>{const a=f1[k],b=f2?f2[k]:undefined,ch=f2&&JSON.stringify(a)!==JSON.stringify(b);
+      return `<tr><td>${FNAME[k]||k[0].toUpperCase()+k.slice(1)}</td><td class="${a==null?"na":""}">${show(a)}</td>${f2?`<td class="${ch?"chg":b==null?"na":""}">${show(b)}</td>`:""}</tr>`;}).join("")+"</tbody>";
+  const dec=$("#exDecision");
+  const ok=E.final===E.reference;
+  dec.innerHTML=`<h3>Decision</h3>
+    <div class="line"><span>System output</span>${E.deferred?`<span class="chip wait">Sent to clinician</span>`:`<span class="chip acc">${CAT[E.final]}</span>`}</div>
+    <div class="line"><span>Majority answer</span><span class="chip ${ok?"ok":"bad"}">${CAT[E.final]}</span></div>
+    <div class="line"><span>Reference label</span><span class="chip">${CAT[E.reference]}</span></div>
+    <div class="muted" style="font-size:13px">${E.deferred&&!ok?"A wrong answer that was not automated.":ok?"Correct, automated.":""}</div>`;
+  dec.style.opacity = 1;
+  let i=0; const total=nodes.length;
+  const show1=()=>{const n=nodes[i]; n.classList.remove("pending"); n.style.opacity=""; i++; $("#exProg").textContent=`step ${i} of ${total}`;};
+  if(!animate||reduce){ while(i<total) show1(); $("#exProg").textContent=""; return; }
+  dec.style.opacity=.25;
+  show1();
+  exTimer=setInterval(()=>{ if(i>=total){clearInterval(exTimer);dec.style.opacity=1;$("#exProg").textContent="done";return;} show1(); nodes[i-1].scrollIntoView({block:"nearest",behavior:"smooth"}); }, 750);
+}
+$("#exTabs").innerHTML=D.examples.map((E,i)=>`<button role="tab" aria-selected="${i===0}"><span>${EX_TITLE[i]}</span><small>patient ${esc(E.patient)} · reference: ${CAT[E.reference]}</small></button>`).join("");
+[...$("#exTabs").children].forEach((b,i)=>b.onclick=()=>{ex=i;renderEx(false);});
+$("#exPlay").onclick=()=>renderEx(true);
+$("#exAll").onclick=()=>renderEx(false);
+
+/* result 2 */
+(function(){
+  const s=D.interviews.summary;
+  const items=[[`${pct(s.category_correct_before)} → ${pct(s.category_correct_after)}`,"correct category, record only → after interview (50 patients)"],
+    [`${s.hidden_care_gaps_found} / ${s.hidden_care_gaps}`,"hidden care gaps found"],
+    [String(s.wrong_changes),"decisions changed from right to wrong"],
+    [String(s.mean_questions),"questions asked per patient, on average"]];
+  $("#cstats").innerHTML=items.map(([b,t])=>`<div class="stat"><b>${b}</b><span>${t}</span></div>`).join("");
+  const KN={control:"No hidden issue (control)",intolerance:"Side effects not in record",now_smoker:"Started smoking",outside_labs:"Labs from another clinic",stopped_statin:"Stopped statin"};
+  const sv=$("#ctype"), rows=D.interviews.by_type, W=900, L=220, rh=34, H=rows.length*rh+26; sv.setAttribute("viewBox",`0 0 ${W} ${H}`);
+  const x=v=>L+(W-L-60)*v;
+  [0,.25,.5,.75,1].forEach(v=>{svgEl("line",{x1:x(v),x2:x(v),y1:0,y2:H-18,stroke:css("--line")},sv);svgEl("text",{x:x(v),y:H-4,"text-anchor":"middle",class:"ax"},sv,Math.round(v*100)+"%");});
+  rows.forEach((r,i)=>{const y=i*rh+16;
+    svgEl("text",{x:0,y:y+4,"font-size":13.5},sv,KN[r.kind]||r.kind);
+    svgEl("line",{x1:x(r.correct_before),x2:x(r.correct_after),y1:y,y2:y,stroke:css("--muted"),"stroke-width":2},sv);
+    svgEl("circle",{cx:x(r.correct_before),cy:y,r:6,fill:css("--bad")},sv);
+    svgEl("circle",{cx:x(r.correct_after),cy:y,r:6,fill:css("--ok")},sv);
+    const note = r.kind==="intolerance"?` · escalated ${Math.round(r.escalated*10)}/10`:r.kind==="outside_labs"?` · ${r.fields_fixed}/${r.fields_to_fix} values`:"";
+    svgEl("text",{x:x(r.correct_after)+12,y:y+4,"font-size":12,class:"ax"},sv,pct(r.correct_after)+note);
+  });
+})();
+
+/* replay 2 */
+const IV_TITLE=["Stopped statin: hidden care gap","Side effects: recorded and escalated","Labs from another clinic","Failure: understood but not recorded"];
+const IV_STORY=[
+  "The record lists simvastatin, so the patient looks covered. She stopped it four months ago because she felt fine. The agent records <b>on statin = no</b>, and with heart disease and diabetes she becomes a care gap. One finding is weak: it recorded total cholesterol with a quote saying she had no new test.",
+  "The record has no statin side effects, so the rules say she should start one. She stopped atorvastatin after muscle aches. The agent records the intolerance with her own words as evidence and escalates to a clinician. The decision becomes contraindicated, which matches the truth.",
+  "No lipid panel in the record within a year, so no decision was possible. The patient had one at urgent care five months ago and reads out the numbers. The agent records all three values and the decision becomes not indicated.",
+  "The patient clearly reports muscle aches on simvastatin, and the agent escalates and even writes the intolerance into its summary, but never records it as a finding. The decision stays at indicated, which is wrong. It also copied three lab values from the record with a quote that says no test was done.",
+];
+let iv=0, ivTimer=null;
+function supported(f){
+  const lab=["ldl","total_chol","hdl","sbp"].includes(f.field);
+  if(!lab) return true;
+  if(f.value===null) return false;
+  const n=String(Math.round(Number(f.value)));
+  return (f.evidence||"").includes(n);
+}
+function renderIv(animate){
+  clearInterval(ivTimer);
+  const X=D.interviews.examples[iv], S=X.scenario, sc=X.score;
+  [...$("#ivTabs").children].forEach((b,i)=>b.setAttribute("aria-selected",i===iv));
+  $("#ivStory").innerHTML=IV_STORY[iv];
+  const chat=$("#ivChat"); chat.innerHTML="";
+  const used=new Set(), nodes=[];
+  X.transcript.forEach(m=>{
+    const d=document.createElement("div"); d.className="msg "+m.role;
+    let extra="";
+    if(m.role==="patient"){
+      X.findings.forEach((f,j)=>{ if(!used.has(j) && (m.text.includes(f.evidence)||f.evidence.includes(m.text.slice(0,60)))){used.add(j); extra+=`<div class="find ${supported(f)?"":"uns"}">record_finding · ${FNAME[f.field]} = ${f.value===null?"none":f.value}</div>`;} });
+    }
+    d.innerHTML=`<span class="who">${m.role==="agent"?"Agent":"Patient (simulated)"}</span><span>${esc(m.text)}</span>${extra}`;
+    d.classList.add("pending"); chat.appendChild(d); nodes.push(d);
+  });
+  const tail=document.createElement("div"); tail.className="msg agent pending";
+  tail.innerHTML=`<span class="who">Agent · finish</span>${X.escalations.map(e=>`<div class="esc">escalate_to_clinician · ${esc(e)}</div>`).join("")}<span>${esc(X.summary)}</span>`;
+  chat.appendChild(tail); nodes.push(tail);
+  // facts table: only fields that differ between record and truth, or touched by findings
+  const touched=new Set(X.findings.map(f=>f.field)); S.changed_fields.forEach(f=>touched.add(f));
+  const after={}; X.findings.forEach(f=>{after[f.field]=f.value;});
+  const show=v=>v===null||v===undefined?"—":v===true?"yes":v===false?"no":v;
+  $("#ivFacts").innerHTML=`<thead><tr><th>Fact</th><th>Record</th><th>Recorded in interview</th><th>Truth</th></tr></thead><tbody>`+
+    FIELDS.filter(k=>touched.has(k)).map(k=>{const r=S.record[k], a=k in after?after[k]:undefined, t=S.truth[k];
+      const right = a===undefined ? JSON.stringify(r)===JSON.stringify(t) : Number(a)==Number(t)||a===t||(typeof t==="number"&&Math.abs(Number(a)-t)<1);
+      return `<tr><td>${FNAME[k]}</td><td class="${r==null?"na":""}">${show(r)}</td><td class="${a===undefined?"na":right?"":"chg"}">${a===undefined?"not recorded":show(a)}</td><td>${show(t)}</td></tr>`;}).join("")+"</tbody>";
+  const dec=$("#ivDecision");
+  dec.innerHTML=`<h3>Guideline decision</h3>
+    <div class="line"><span>From the record</span><span class="chip ${sc.correct_before?"ok":"bad"}">${CAT[sc.record_category]}</span></div>
+    <div class="line"><span>After the interview</span><span class="chip ${sc.correct_after?"ok":"bad"}">${CAT[sc.after_category]}</span></div>
+    <div class="line"><span>Truth</span><span class="chip">${CAT[sc.truth_category]}</span></div>
+    <div class="line muted" style="font-size:13px"><span>${sc.questions} questions · ${sc.findings} findings, ${sc.unsupported_findings} with weak evidence</span><span>${sc.escalated?"escalated":"not escalated"}${sc.escalation_expected?" (expected)":""}</span></div>`;
+  let i=0; const total=nodes.length;
+  const show1=()=>{nodes[i].classList.remove("pending"); i++;};
+  if(!animate||reduce){ while(i<total) show1(); dec.style.opacity=1; return; }
+  dec.style.opacity=.25; show1();
+  ivTimer=setInterval(()=>{ if(i>=total){clearInterval(ivTimer);dec.style.opacity=1;return;} show1(); nodes[i-1].scrollIntoView({block:"nearest",behavior:"smooth"}); }, 1100);
+}
+$("#ivTabs").innerHTML=D.interviews.examples.map((X,i)=>`<button role="tab" aria-selected="${i===0}"><span>${IV_TITLE[i]}</span><small>${esc(X.scenario.sid)} · ${X.score.correct_after?"correct after":"still wrong"}</small></button>`).join("");
+[...$("#ivTabs").children].forEach((b,i)=>b.onclick=()=>{iv=i;renderIv(false);});
+$("#ivPlay").onclick=()=>renderIv(true);
+$("#ivAll").onclick=()=>renderIv(false);
+
+drawAgent(); renderEx(false); renderIv(false);
+const mq=matchMedia("(prefers-color-scheme: dark)");
+const redraw=()=>{ $("#pipe").innerHTML=""; location.reload(); };
+mq.addEventListener?.("change",()=>location.reload());
+</script>
+
+</body>
+</html>
