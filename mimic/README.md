@@ -3,9 +3,15 @@
 This folder ports the statin care-gap agent from Synthea to MIMIC-IV. The
 Synthea version under `src/statin_agent/` is unchanged.
 
-Phase-1 task (draft): for an admission with atherosclerotic cardiovascular
-disease (ASCVD), was a statin in use at the end of the stay, and if not, does
-the record contain a reason not to use one?
+Phase-1 has two tasks (draft):
+
+- Task A, patient-level screening (main): for a patient at an index date,
+  use all earlier records (every prior admission, inpatient and outpatient
+  labs, outpatient blood pressure) to fill the prototype's 14 facts and apply
+  the prototype's rules unchanged (6 categories, PCE risk). This is the
+  longitudinal-EHR setting closest to the Synthea prototype.
+- Task B, statin at discharge after an ASCVD admission: a standard quality
+  measure with clear rules, used for strict evaluation.
 
 Status: data loading and descriptive statistics only. Category definitions,
 guideline rules, tools, verifier and prompts come after the categories are
@@ -18,8 +24,10 @@ confirmed.
 | `db.py` | Loads MIMIC-IV `hosp` CSVs (Demo 2.2 or full) into DuckDB with explicit column types; adds view `admissions_x` (age at admission, length of stay). |
 | `codes.py` | Draft code sets: ASCVD ICD-9/10 diagnoses, CABG/PCI procedures, candidate "justified no statin" diagnoses, lab itemids, statin name matcher. `python -m mimic.codes --db ...` audits every prefix against the ICD dictionaries. |
 | `describe.py` | One row per admission with ASCVD flags, statin exposure and candidate reasons; prints a Markdown summary and a draft category split. |
+| `patient_level.py` | Task A: one row per patient at the index date, classified with `statin_agent.guideline.classify`; runs several lab/BP lookback windows. |
 | `tests/test_codes.py` | Unit tests for the matchers (no data needed). |
-| `docs/demo_summary.md` | Output of `describe.py` on MIMIC-IV Demo 2.2 (public, ODbL). |
+| `docs/demo_summary.md` | Output of `describe.py` (task B) on MIMIC-IV Demo 2.2 (public, ODbL). |
+| `docs/demo_patient_level.md` | Output of `patient_level.py` (task A) on the Demo. |
 
 ## Run on Sol (CPU only, login node is fine for the Demo)
 
@@ -38,7 +46,10 @@ python -m mimic.codes --db data/mimic_demo.duckdb | grep "NO MATCH"
 # 3. Descriptive statistics
 python -m mimic.describe --db data/mimic_demo.duckdb --out-dir results_mimic/describe
 
-# 4. Unit tests
+# 4. Patient-level screening (task A)
+python -m mimic.patient_level --db data/mimic_demo.duckdb --out-dir results_mimic/patient_level
+
+# 5. Unit tests
 python -m pytest -q mimic/tests
 ```
 

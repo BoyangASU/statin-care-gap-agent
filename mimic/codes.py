@@ -72,6 +72,22 @@ JUSTIFIED_DX: dict[str, Spec] = {
     "esrd_dialysis": {9: ["5856", "V4511"], 10: ["N186", "Z992"]},
 }
 
+# --- Risk factors for the patient-level (primary + secondary prevention) task ---
+RISK_DX: dict[str, Spec] = {
+    "diabetes": {9: ["250"], 10: ["E10", "E11", "E13"]},
+    "hypertension": {9: ["401", "402", "403", "404", "405"],
+                     10: ["I10", "I11", "I12", "I13", "I15", "I16"]},
+    # Current tobacco use. History codes (V15.82, Z87.891) mean FORMER smoker.
+    "current_smoker": {9: ["3051"], 10: ["F172", "Z720"]},
+    "former_smoker": {9: ["V1582"], 10: ["Z87891"]},
+}
+ANTIHYPERTENSIVE_REGEX = (r"(lisinopril|enalapril|ramipril|captopril|benazepril|quinapril|"
+                          r"losartan|valsartan|irbesartan|olmesartan|candesartan|telmisartan|"
+                          r"amlodipine|nifedipine|diltiazem|verapamil|felodipine|"
+                          r"metoprolol|atenolol|carvedilol|bisoprolol|labetalol|nadolol|propranolol|"
+                          r"hydrochlorothiazide|chlorthalidone|indapamide|spironolactone|"
+                          r"hydralazine|clonidine|doxazosin|terazosin|sacubitril)")
+
 # --- Labs (d_labitems itemids, Blood) ---------------------------------------
 LAB_ITEMS = {
     "alt": [50861],
