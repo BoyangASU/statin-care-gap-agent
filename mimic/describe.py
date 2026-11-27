@@ -160,10 +160,11 @@ def build_admission_table(con) -> None:
            coalesce(p.prior_statin, FALSE) AS prior_statin,
            coalesce(p.n_prior_admissions, 0) AS n_prior_admissions,
            coalesce(ph.prior_statin_harm_dx, FALSE) AS prior_statin_harm_dx,
-           a.hospital_expire_flag = 1 OR a.discharge_location = 'DIED' AS died_in_hospital,
-           a.discharge_location = 'HOSPICE' AS discharged_hospice,
-           a.discharge_location = 'AGAINST ADVICE' AS left_ama,
-           a.discharge_location = 'ACUTE HOSPITAL' AS transferred_acute
+           -- coalesce: discharge_location is NULL for many short stays
+           coalesce(a.hospital_expire_flag = 1 OR a.discharge_location = 'DIED', FALSE) AS died_in_hospital,
+           coalesce(a.discharge_location = 'HOSPICE', FALSE) AS discharged_hospice,
+           coalesce(a.discharge_location = 'AGAINST ADVICE', FALSE) AS left_ama,
+           coalesce(a.discharge_location = 'ACUTE HOSPITAL', FALSE) AS transferred_acute
     FROM admissions_x a
     LEFT JOIN dx_flags x USING (hadm_id) LEFT JOIN proc_flags pr USING (hadm_id)
     LEFT JOIN rx r USING (hadm_id) LEFT JOIN em e USING (hadm_id)

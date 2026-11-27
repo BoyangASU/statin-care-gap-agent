@@ -13,9 +13,10 @@ Phase-1 has two tasks (draft):
 - Task B, statin at discharge after an ASCVD admission: a standard quality
   measure with clear rules, used for strict evaluation.
 
-Status: data loading and descriptive statistics only. Category definitions,
-guideline rules, tools, verifier and prompts come after the categories are
-confirmed.
+Status: data loading, descriptive statistics, and the task-A record-review
+agent (tools, reference labels, verifier, prompt, pipeline) are in place and
+run end to end with the scripted backend. The LLM backend has not yet been run
+on MIMIC (needs a GPU for local Qwen3-8B).
 
 ## Files
 
@@ -25,7 +26,15 @@ confirmed.
 | `codes.py` | Draft code sets: ASCVD ICD-9/10 diagnoses, CABG/PCI procedures, candidate "justified no statin" diagnoses, lab itemids, statin name matcher. `python -m mimic.codes --db ...` audits every prefix against the ICD dictionaries. |
 | `describe.py` | One row per admission with ASCVD flags, statin exposure and candidate reasons; prints a Markdown summary and a draft category split. |
 | `patient_level.py` | Task A: one row per patient at the index date, classified with `statin_agent.guideline.classify`; runs several lab/BP lookback windows. |
-| `tests/test_codes.py` | Unit tests for the matchers (no data needed). |
+| `agent/record.py` | `MimicRecord`: one patient, nothing after the index admission's discharge. Reference facts (`reference_facts`) and index-admission selection. |
+| `agent/tools.py` | The agent's 8 record tools plus the prototype's two calculator tools and `submit_decision` (with `evidence_codes`). |
+| `agent/prompts.py` | System prompt with the MIMIC rules (timing of orders, 365-day window, ICD-9/10 code lists). |
+| `agent/verifier.py` | Self-check: the four numbers, on_statin, cited codes exist and fit, diagnoses reviewed, category follows from facts. |
+| `agent/backend.py` | OpenAI-compatible loop for a local vLLM server; refuses non-local servers unless `--allow-remote` (Demo only). |
+| `agent/simulated.py` | Scripted agent with injected MIMIC-style mistakes, to test the harness without a GPU. |
+| `agent/pipeline.py` | k samples, verify, one retry, majority vote, deferral (same logic as the prototype). |
+| `build_labels.py`, `run_agent.py`, `evaluate.py` | Labels, runs, and the prototype's metrics on MIMIC. |
+| `tests/` | `test_codes.py` (no data); `test_agent.py` (set `MIMIC_DEMO_DB` to run the data tests). |
 | `docs/demo_summary.md` | Output of `describe.py` (task B) on MIMIC-IV Demo 2.2 (public, ODbL). |
 | `docs/demo_patient_level.md` | Output of `patient_level.py` (task A) on the Demo. |
 
@@ -49,9 +58,43 @@ python -m mimic.describe --db data/mimic_demo.duckdb --out-dir results_mimic/des
 # 4. Patient-level screening (task A)
 python -m mimic.patient_level --db data/mimic_demo.duckdb --out-dir results_mimic/patient_level
 
-# 5. Unit tests
-python -m pytest -q mimic/tests
+# 5. Unit tests (the data tests run when MIMIC_DEMO_DB is set)
+MIMIC_DEMO_DB=data/mimic_demo.duckdb python -m pytest -q mimic/tests
+
+# 6. Record-review agent, harness test with the scripted backend (CPU)
+python -m mimic.build_labels --db data/mimic_demo.duckdb --out-dir results_mimic/demo
+python -m mimic.run_agent --db data/mimic_demo.duckdb --labels-dir results_mimic/demo --backend simulated --n 100
+python -m mimic.evaluate --labels-dir results_mimic/demo --run simulated_n68_k3 --bootstrap 2000
 ```
+
+### With local Qwen3-8B (when a GPU is free; do not use the GPUs reserved for other experiments)
+
+On a GPU node, in one terminal:
+
+```bash
+module load cuda-13.0.1-gcc-13.2.0
+source /scratch/$USER/venvs/statin/bin/activate
+vllm serve Qwen/Qwen3-8B --served-model-name qwen3-8b --enable-auto-tool-choice \
+    --tool-call-parser hermes --max-model-len 32768 --port 8000
+```
+
+In a second terminal on the same node:
+
+```bash
+cd ~/statin-care-gap-agent && source /scratch/$USER/venvs/statin/bin/activate
+export OPENAI_API_KEY=EMPTY
+# smoke test: 10 patients, 1 sample each
+python -m mimic.run_agent --db data/mimic_demo.duckdb --labels-dir results_mimic/demo --backend openai \
+    --base-url http://localhost:8000/v1 --model qwen3-8b --n 10 --k 1 --run-name qwen_smoke
+python -m mimic.evaluate --labels-dir results_mimic/demo --run qwen_smoke
+# full Demo run (68 patients, k=3)
+python -m mimic.run_agent --db data/mimic_demo.duckdb --labels-dir results_mimic/demo --backend openai \
+    --base-url http://localhost:8000/v1 --model qwen3-8b --n 100 --k 3 --workers 4 --run-name qwen_k3
+python -m mimic.evaluate --labels-dir results_mimic/demo --run qwen_k3 --bootstrap 2000
+```
+
+The backend only talks to a local server (localhost or a bare node name such
+as `sg017`). That is required for credentialed MIMIC-IV.
 
 `--hosp-dir` accepts either the `hosp` folder or its parent. For the full
 MIMIC-IV, point it at the full `hosp` folder and use a different `--db`

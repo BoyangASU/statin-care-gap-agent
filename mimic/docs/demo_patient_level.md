@@ -9,11 +9,11 @@ Patients: 93.
 | category | patients |
 |---|---|
 | excluded_end_of_life | 0 |
-| on_statin | 42 |
+| on_statin | 41 |
 | contraindicated | 6 |
 | indicated | 4 |
 | consider | 0 |
-| not_indicated | 14 |
+| not_indicated | 15 |
 | insufficient_data | 27 |
 
 Facts available (all patients):
@@ -24,15 +24,15 @@ Facts available (all patients):
 | ASCVD in any admission up to index | 37 |
 | diabetes code | 33 |
 | hypertension code | 62 |
-| current smoking code on index admission | 17 |
-| LDL available | 20 |
-| total cholesterol and HDL available | 20 |
+| current smoking code on index admission | 18 |
+| LDL available | 21 |
+| total cholesterol and HDL available | 21 |
 |   latest lipid was an outpatient lab | 13 |
-| outpatient SBP available (omr) | 38 |
-| all four PCE inputs available | 10 |
-| statin active at end of index admission | 42 |
+| outpatient SBP available (omr) | 39 |
+| all four PCE inputs available | 11 |
+| statin active at end of index admission | 41 |
 | statin in any admission up to index | 50 |
-| more than one admission up to index | 40 |
+| more than one admission up to index | 41 |
 
 `indicated` (care gap) patients: 4
 
@@ -61,11 +61,11 @@ Patients: 93.
 | category | patients |
 |---|---|
 | excluded_end_of_life | 0 |
-| on_statin | 42 |
+| on_statin | 41 |
 | contraindicated | 6 |
 | indicated | 4 |
 | consider | 0 |
-| not_indicated | 15 |
+| not_indicated | 16 |
 | insufficient_data | 26 |
 
 Facts available (all patients):
@@ -76,15 +76,15 @@ Facts available (all patients):
 | ASCVD in any admission up to index | 37 |
 | diabetes code | 33 |
 | hypertension code | 62 |
-| current smoking code on index admission | 17 |
-| LDL available | 22 |
-| total cholesterol and HDL available | 22 |
+| current smoking code on index admission | 18 |
+| LDL available | 23 |
+| total cholesterol and HDL available | 23 |
 |   latest lipid was an outpatient lab | 16 |
-| outpatient SBP available (omr) | 43 |
-| all four PCE inputs available | 13 |
-| statin active at end of index admission | 42 |
+| outpatient SBP available (omr) | 44 |
+| all four PCE inputs available | 14 |
+| statin active at end of index admission | 41 |
 | statin in any admission up to index | 50 |
-| more than one admission up to index | 40 |
+| more than one admission up to index | 41 |
 
 `indicated` (care gap) patients: 4
 
@@ -113,11 +113,11 @@ Patients: 93.
 | category | patients |
 |---|---|
 | excluded_end_of_life | 0 |
-| on_statin | 42 |
+| on_statin | 41 |
 | contraindicated | 6 |
 | indicated | 5 |
 | consider | 0 |
-| not_indicated | 15 |
+| not_indicated | 16 |
 | insufficient_data | 25 |
 
 Facts available (all patients):
@@ -128,15 +128,15 @@ Facts available (all patients):
 | ASCVD in any admission up to index | 37 |
 | diabetes code | 33 |
 | hypertension code | 62 |
-| current smoking code on index admission | 17 |
+| current smoking code on index admission | 18 |
 | LDL available | 27 |
 | total cholesterol and HDL available | 27 |
 |   latest lipid was an outpatient lab | 19 |
-| outpatient SBP available (omr) | 44 |
+| outpatient SBP available (omr) | 45 |
 | all four PCE inputs available | 18 |
-| statin active at end of index admission | 42 |
+| statin active at end of index admission | 41 |
 | statin in any admission up to index | 50 |
-| more than one admission up to index | 40 |
+| more than one admission up to index | 41 |
 
 `indicated` (care gap) patients: 5
 

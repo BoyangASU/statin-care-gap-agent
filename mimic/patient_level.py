@@ -107,7 +107,7 @@ def build_patient_table(con, lookback_days: int | None) -> None:
     for key in ("ldl", "total_chol", "hdl"):
         lo, hi = PLAUSIBLE[key]
         lab_rows.append(f"""
-        SELECT i.subject_id, '{key}' AS k, l.valuenum AS v, l.charttime AS t,
+        SELECT i.subject_id, '{key}' AS k, l.valuenum AS v, l.charttime AS t, l.itemid AS item,
                l.hadm_id IS NULL AS outpatient
         FROM idx i JOIN labevents l ON l.subject_id = i.subject_id
         WHERE l.itemid IN ({LAB[key]}) AND l.valuenum BETWEEN {lo} AND {hi}
@@ -115,7 +115,7 @@ def build_patient_table(con, lookback_days: int | None) -> None:
     con.execute(f"""
     CREATE OR REPLACE TEMP TABLE lab_latest AS
     SELECT * FROM ({' UNION ALL '.join(lab_rows)})
-    QUALIFY row_number() OVER (PARTITION BY subject_id, k ORDER BY t DESC) = 1""")
+    QUALIFY row_number() OVER (PARTITION BY subject_id, k ORDER BY t DESC, item DESC, v) = 1""")
     con.execute("""
     CREATE OR REPLACE TEMP TABLE pt_labs AS
     SELECT subject_id,
@@ -132,7 +132,7 @@ def build_patient_table(con, lookback_days: int | None) -> None:
     SELECT subject_id, sbp FROM (
       SELECT i.subject_id,
              try_cast(split_part(o.result_value, '/', 1) AS DOUBLE) AS sbp,
-             row_number() OVER (PARTITION BY i.subject_id ORDER BY o.chartdate DESC, o.seq_num) AS rn
+             row_number() OVER (PARTITION BY i.subject_id ORDER BY o.chartdate DESC, o.seq_num, o.result_name, o.result_value) AS rn
       FROM idx i JOIN omr o ON o.subject_id = i.subject_id
       WHERE o.result_name LIKE 'Blood Pressure%' AND o.chartdate <= i.dischtime::DATE {owindow}
         AND try_cast(split_part(o.result_value, '/', 1) AS DOUBLE) BETWEEN 60 AND 300)

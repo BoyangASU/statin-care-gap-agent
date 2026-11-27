@@ -190,5 +190,5 @@ Discharge location, `any` ASCVD admissions:
 | DIED | 10 |
 | REHAB | 4 |
 | CHRONIC/LONG TERM ACUTE CARE | 3 |
-| AGAINST ADVICE | 2 |
 | HOSPICE | 2 |
+| AGAINST ADVICE | 2 |

@@ -1,0 +1,43 @@
+"""Decision pipeline for one patient, identical in logic to the prototype's:
+k samples x (attempt -> verify -> one retry with the verifier's feedback),
+self-consistency confidence, and deferral to a clinician when agreement is
+below tau or the majority answer failed verification.
+
+It reuses the prototype's Sample/Decision records, so the prototype's
+evaluation code (statin_agent.evaluation) reads its output unchanged.
+"""
+from __future__ import annotations
+
+from collections import Counter
+
+from statin_agent.agent.pipeline import Decision, Sample
+
+from .verifier import verify
+
+
+def _ep_dict(ep):
+    return {"category": ep.category, "facts": ep.facts, "evidence_codes": ep.evidence_codes,
+            "rationale": ep.rationale, "evidence": ep.evidence, "error": ep.error, "trace": ep.trace,
+            "input_tokens": ep.input_tokens, "output_tokens": ep.output_tokens,
+            "seconds": round(ep.seconds, 2)}
+
+
+def decide(rec, backend, k=3, tau=0.8, self_check=True, lookback_days=365) -> Decision:
+    samples, tin, tout = [], 0, 0
+    for _ in range(k):
+        ep = backend.run(rec)
+        p1 = verify(rec, ep, lookback_days)
+        eps, final, p2 = [ep], ep, p1
+        if self_check and p1:
+            final = backend.run(rec, feedback="\n".join(f"- {p}" for p in p1))
+            p2 = verify(rec, final, lookback_days)
+            eps.append(final)
+        for e in eps:
+            tin += e.input_tokens; tout += e.output_tokens
+        samples.append(Sample(ep.category, p1, final.category, p2, len(eps) > 1, [_ep_dict(e) for e in eps]))
+    cats = [s.final_category for s in samples]
+    top, n = Counter(cats).most_common(1)[0]
+    conf = n / k
+    verified = all(not s.final_problems for s in samples if s.final_category == top)
+    deferred = conf < tau or (self_check and not verified) or top is None
+    return Decision(rec.patient_id, top, conf, verified, deferred, samples, tin, tout)
