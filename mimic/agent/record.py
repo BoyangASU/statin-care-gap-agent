@@ -15,7 +15,7 @@ import re
 from datetime import datetime, timedelta
 
 from mimic import codes as C
-from statin_agent.guideline import Facts
+from mimic.guideline import Facts
 
 PLAUSIBLE = {"ldl": (10, 600), "total_chol": (50, 1000), "hdl": (5, 200), "sbp": (60, 300)}
 # Labs the agent can ask for by name (Blood, d_labitems itemids).

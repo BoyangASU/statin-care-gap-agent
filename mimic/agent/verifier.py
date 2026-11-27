@@ -17,7 +17,7 @@ self-consistency and deferral, and are measured against the reference.
 from __future__ import annotations
 
 from mimic import codes as C
-from statin_agent.guideline import CATEGORIES, Facts, classify
+from mimic.guideline import CATEGORIES, Facts, classify
 
 from .record import MimicRecord, latest_valid, reference_on_statin
 

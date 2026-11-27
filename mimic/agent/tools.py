@@ -6,15 +6,41 @@ orders that were cancelled at once, history codes next to current-use codes.
 Applying the rules to that raw data is the agent's job, which is what the
 verifier and the evaluation measure.
 
-The two calculator tools are the prototype's, unchanged.
+The two calculator tools and the fact schema are the prototype's, copied unchanged.
 """
 from __future__ import annotations
 
-from statin_agent.guideline import CATEGORIES
-from statin_agent.tools import (compute_ascvd_risk, check_statin_guideline, FACT_SCHEMA,
-                                TOOL_SPECS as PROTO_SPECS)
+from mimic.guideline import CATEGORIES, Facts, classify, pce_10yr_risk
 
 from .record import MimicRecord, LAB_NAMES
+
+
+# ------------------------------------------------- calculator tools (as in the prototype)
+def compute_ascvd_risk(rec, age, sex, race, total_chol, hdl, sbp, bp_treated, smoker, diabetes):
+    r = pce_10yr_risk(float(age), sex, race, float(total_chol), float(hdl), float(sbp),
+                      bool(bp_treated), bool(smoker), bool(diabetes))
+    return {"ten_year_ascvd_risk": round(r, 4)}
+
+
+def check_statin_guideline(rec, **facts):
+    f = Facts(**{k: facts.get(k) for k in Facts.__dataclass_fields__})
+    cat, risk = classify(f)
+    return {"category": cat, "ten_year_ascvd_risk": None if risk is None else round(risk, 4)}
+
+
+_num = {"type": ["number", "null"]}
+FACT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "age": {"type": "number"}, "sex": {"type": "string", "enum": ["male", "female"]},
+        "race": {"type": "string"}, "on_statin": {"type": "boolean"},
+        "statin_intolerance": {"type": "boolean"}, "ascvd": {"type": "boolean"},
+        "diabetes": {"type": "boolean"}, "smoker": {"type": "boolean"},
+        "bp_treated": {"type": "boolean"}, "hypertension": {"type": "boolean"},
+        "ldl": _num, "total_chol": _num, "hdl": _num, "sbp": _num,
+    },
+    "required": list(Facts.__dataclass_fields__),
+}
 
 
 def get_demographics(rec: MimicRecord):
@@ -71,7 +97,6 @@ TOOL_FUNCS = {
     "check_statin_guideline": check_statin_guideline,
 }
 
-_proto = {s["name"]: s for s in PROTO_SPECS}
 _kw = {"type": "string", "description": "Case-insensitive text to filter by."}
 TOOL_SPECS = [
     {"name": "get_demographics",
@@ -108,8 +133,14 @@ TOOL_SPECS = [
     {"name": "get_blood_pressure",
      "description": "Outpatient blood pressure readings (systolic/diastolic mmHg) up to the index date, newest first, with days_before_index.",
      "parameters": {"type": "object", "properties": {"limit": {"type": "integer", "default": 10}}}},
-    _proto["compute_ascvd_risk"],
-    _proto["check_statin_guideline"],
+    {"name": "compute_ascvd_risk", "description": "10-year ASCVD risk from the 2013 Pooled Cohort Equations.",
+     "parameters": {"type": "object", "properties": {
+         k: FACT_SCHEMA["properties"][k] for k in
+         ("age", "sex", "race", "total_chol", "hdl", "sbp", "bp_treated", "smoker", "diabetes")},
+         "required": ["age", "sex", "race", "total_chol", "hdl", "sbp", "bp_treated", "smoker", "diabetes"]}},
+    {"name": "check_statin_guideline",
+     "description": "Apply the statin guideline (ACC/AHA 2018, USPSTF 2022) to the facts you extracted. Use null for missing values.",
+     "parameters": FACT_SCHEMA},
 ]
 
 SUBMIT_SPEC = {

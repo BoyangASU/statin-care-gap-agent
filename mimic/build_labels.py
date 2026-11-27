@@ -16,7 +16,7 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
-from statin_agent.guideline import classify
+from mimic.guideline import classify
 
 from mimic.agent.record import MimicRecord, index_admissions, reference_evidence, reference_facts
 

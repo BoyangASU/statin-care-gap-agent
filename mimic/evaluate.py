@@ -1,4 +1,4 @@
-"""Evaluate a MIMIC agent run with the prototype's metrics (statin_agent.evaluation, unchanged):
+"""Evaluate a MIMIC agent run with the prototype's metrics (mimic/evaluation.py, a copy of the prototype's):
 the three configurations (single pass, + self-check, + self-consistency and deferral),
 field-level extraction errors, confusion matrix, risk-coverage, optional bootstrap CIs.
 
@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from statin_agent import evaluation as ev
+from mimic import evaluation as ev
 
 
 def main():

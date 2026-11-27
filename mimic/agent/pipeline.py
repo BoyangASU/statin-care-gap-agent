@@ -3,16 +3,44 @@ k samples x (attempt -> verify -> one retry with the verifier's feedback),
 self-consistency confidence, and deferral to a clinician when agreement is
 below tau or the majority answer failed verification.
 
-It reuses the prototype's Sample/Decision records, so the prototype's
-evaluation code (statin_agent.evaluation) reads its output unchanged.
+Sample/Decision are the prototype's records (copied), so the evaluation code
+(mimic/evaluation.py, a copy of the prototype's) reads the output unchanged.
 """
 from __future__ import annotations
 
 from collections import Counter
-
-from statin_agent.agent.pipeline import Decision, Sample
+from dataclasses import asdict, dataclass, field
 
 from .verifier import verify
+
+
+@dataclass
+class Sample:
+    first_category: str | None
+    first_problems: list
+    final_category: str | None
+    final_problems: list
+    retried: bool
+    episodes: list = field(default_factory=list)   # serialized Episodes (with traces)
+
+
+@dataclass
+class Decision:
+    patient_id: str
+    category: str | None
+    confidence: float
+    verified: bool
+    deferred: bool
+    samples: list
+    input_tokens: int = 0
+    output_tokens: int = 0
+
+    def to_dict(self, with_traces=True):
+        d = asdict(self)
+        if not with_traces:
+            for s in d["samples"]:
+                s.pop("episodes", None)
+        return d
 
 
 def _ep_dict(ep):

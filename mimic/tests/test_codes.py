@@ -37,3 +37,15 @@ def test_icd_sql_agrees_with_python():
         got = {r[0] for r in con.execute(f"SELECT icd_code FROM t WHERE {C.icd_sql(spec)}").fetchall()}
         want = {c for c, v in rows if C.icd_match(c, v, spec)}
         assert got == want, name
+
+
+def test_guideline_copy_matches_prototype():
+    """mimic/guideline.py is a copy of src/statin_agent/guideline.py; skipped when src/ is absent."""
+    import pytest
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+    src = root / "src" / "statin_agent" / "guideline.py"
+    if not src.exists():
+        pytest.skip("prototype src/ not checked out (mimic/ used on its own)")
+    body = (root / "mimic" / "guideline.py").read_text().split("\n", 2)[2]   # drop the 2-line header
+    assert body == src.read_text()

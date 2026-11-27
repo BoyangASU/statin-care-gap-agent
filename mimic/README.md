@@ -3,6 +3,12 @@
 This folder ports the statin care-gap agent from Synthea to MIMIC-IV. The
 Synthea version under `src/statin_agent/` is unchanged.
 
+The folder is self-contained: the prototype's guideline rules and metrics are
+copied in (`guideline.py`, `evaluation.py`), so `mimic/` runs without `src/`.
+Run every command from the folder that contains `mimic/`. Dependencies:
+Python 3.10+, `duckdb`, `pandas`, `numpy`, `pytest` (and `vllm` on the GPU node
+for the LLM backend).
+
 Phase-1 has two tasks (draft):
 
 - Task A, patient-level screening (main): for a patient at an index date,
@@ -25,7 +31,7 @@ on MIMIC (needs a GPU for local Qwen3-8B).
 | `db.py` | Loads MIMIC-IV `hosp` CSVs (Demo 2.2 or full) into DuckDB with explicit column types; adds view `admissions_x` (age at admission, length of stay). |
 | `codes.py` | Draft code sets: ASCVD ICD-9/10 diagnoses, CABG/PCI procedures, candidate "justified no statin" diagnoses, lab itemids, statin name matcher. `python -m mimic.codes --db ...` audits every prefix against the ICD dictionaries. |
 | `describe.py` | One row per admission with ASCVD flags, statin exposure and candidate reasons; prints a Markdown summary and a draft category split. |
-| `patient_level.py` | Task A: one row per patient at the index date, classified with `statin_agent.guideline.classify`; runs several lab/BP lookback windows. |
+| `patient_level.py` | Task A: one row per patient at the index date, classified with `guideline.classify`; runs several lab/BP lookback windows. |
 | `agent/record.py` | `MimicRecord`: one patient, nothing after the index admission's discharge. Reference facts (`reference_facts`) and index-admission selection. |
 | `agent/tools.py` | The agent's 8 record tools plus the prototype's two calculator tools and `submit_decision` (with `evidence_codes`). |
 | `agent/prompts.py` | System prompt with the MIMIC rules (timing of orders, 365-day window, ICD-9/10 code lists). |
@@ -34,17 +40,31 @@ on MIMIC (needs a GPU for local Qwen3-8B).
 | `agent/simulated.py` | Scripted agent with injected MIMIC-style mistakes, to test the harness without a GPU. |
 | `agent/pipeline.py` | k samples, verify, one retry, majority vote, deferral (same logic as the prototype). |
 | `build_labels.py`, `run_agent.py`, `evaluate.py` | Labels, runs, and the prototype's metrics on MIMIC. |
+| `guideline.py`, `evaluation.py` | Copies of the prototype's rules (6 categories, PCE) and metrics; a test checks the rules copy is identical when `src/` is present. |
 | `tests/` | `test_codes.py` (no data); `test_agent.py` (set `MIMIC_DEMO_DB` to run the data tests). |
 | `docs/demo_summary.md` | Output of `describe.py` (task B) on MIMIC-IV Demo 2.2 (public, ODbL). |
 | `docs/demo_patient_level.md` | Output of `patient_level.py` (task A) on the Demo. |
 
 ## Run on Sol (CPU only, login node is fine for the Demo)
 
+First time: download only the `mimic/` folder (sparse checkout).
+
 ```bash
-cd ~/statin-care-gap-agent
-git fetch origin
+cd ~
+git clone --filter=blob:none --no-checkout --branch claude/project-thread-e5bipv \
+    https://github.com/BoyangASU/statin-care-gap-agent.git statin-mimic
+cd statin-mimic
+git sparse-checkout set mimic
 git checkout claude/project-thread-e5bipv
+ls            # only mimic/ (plus top-level files such as README.md)
+```
+
+Later updates: `cd ~/statin-mimic && git pull`.
+
+```bash
+cd ~/statin-mimic
 source /scratch/$USER/venvs/statin/bin/activate
+mkdir -p data
 
 # 1. Load the Demo hosp tables (about 5 seconds)
 python -m mimic.db --hosp-dir /scratch/$USER/mimic-iv-demo/hosp --db data/mimic_demo.duckdb
@@ -81,7 +101,7 @@ vllm serve Qwen/Qwen3-8B --served-model-name qwen3-8b --enable-auto-tool-choice 
 In a second terminal on the same node:
 
 ```bash
-cd ~/statin-care-gap-agent && source /scratch/$USER/venvs/statin/bin/activate
+cd ~/statin-mimic && source /scratch/$USER/venvs/statin/bin/activate
 export OPENAI_API_KEY=EMPTY
 # smoke test: 10 patients, 1 sample each
 python -m mimic.run_agent --db data/mimic_demo.duckdb --labels-dir results_mimic/demo --backend openai \

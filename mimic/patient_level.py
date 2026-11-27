@@ -4,7 +4,7 @@ This mirrors the Synthea prototype task as closely as MIMIC allows: for each
 patient at an index date, use ALL earlier records (every prior admission's
 diagnoses and procedures, inpatient and outpatient labs, outpatient blood
 pressure from `omr`) to fill the same 14 facts, then apply the prototype's
-reference rules (`statin_agent.guideline.classify`: 2018 AHA/ACC + USPSTF 2022,
+reference rules (`classify` (mimic/guideline.py, a copy of the prototype's guideline): 2018 AHA/ACC + USPSTF 2022,
 PCE 10-year risk). Primary and secondary prevention are both covered.
 
 Index date (draft choice): discharge time of each patient's last admission
@@ -25,7 +25,6 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import sys
 from pathlib import Path
 
 import duckdb
@@ -33,11 +32,7 @@ import duckdb
 from mimic import codes as C
 from mimic.describe import build_admission_table, _md_table
 
-try:  # reuse the prototype's guideline logic unchanged
-    from statin_agent.guideline import Facts, classify, CATEGORIES
-except ImportError:  # repository not pip-installed: add src/ to the path
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-    from statin_agent.guideline import Facts, classify, CATEGORIES
+from mimic.guideline import Facts, classify, CATEGORIES  # the prototype's rules, unchanged
 
 LAB = {k: ", ".join(str(i) for i in v) for k, v in C.LAB_ITEMS.items()}
 PLAUSIBLE = {"ldl": (10, 600), "total_chol": (50, 1000), "hdl": (5, 200), "sbp": (60, 300)}
@@ -240,7 +235,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(args.db, read_only=True)
     report = ["# MIMIC-IV patient-level statin screening (draft)\n",
-              "Reference rules: the Synthea prototype's `statin_agent.guideline.classify`, unchanged. "
+              "Reference rules: the Synthea prototype's `classify` (mimic/guideline.py, a copy of the prototype's guideline), unchanged. "
               "`statin_intolerance` here = statin-harm ICD code in any admission up to index, or "
               "active liver disease / pregnancy on the index admission. Index = discharge of the last "
               "admission that did not end in death, hospice or palliative care.\n"]
